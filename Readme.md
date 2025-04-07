@@ -43,3 +43,7 @@ Contributions are welcome! Please:
 - **Create a feature branch**
 
 - **Submit a pull request**
+
+## :page_facing_up: License
+
+MIT License - See [LICENSE](https://github.com/Noureddine-0/PEScope/blob/main/LICENSE) for details.
