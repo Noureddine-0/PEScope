@@ -8,7 +8,6 @@
 ## :mag_right: Project Overview  
 PEScope is an **early-stage** cross-platform tool for parsing and analyzing PE files (EXE/DLL/SYS). Designed for malware analysts, reverse engineers, and security researchers, it provides:  
 
-- :file_folder: **PE Header Parsing** (DOS, NT, Sections)  
 - :bar_chart: **Import/Export Table Analysis**  
 - :microscope: **Basic Static Analysis**  
 - :gear: **CMake-based Build System**  
@@ -20,7 +19,6 @@ PEScope is an **early-stage** cross-platform tool for parsing and analyzing PE f
 ### Prerequisites  
 - CMake 3.21+  
 - C++17 compiler (GCC/Clang/MSVC)  
-- OpenSSL (for cryptographic hashes)  
 
 ### Build Steps  
 ```bash
@@ -30,3 +28,18 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
+## 🌐 Cross-Platform Support
+| Platform | Status              | Notes                                   |
+|----------|---------------------|-----------------------------------------|
+| Windows  | :gear:              | Primary target – MSVC/MinGW supported   |
+| Linux    | :gear:              | In progress – Tested on Ubuntu 22.04    |
+| macOS    | :construction:      | Planned – ARM64 support coming          |
+
+## :handshake: Contributing
+Contributions are welcome! Please:
+
+Fork the repository
+
+Create a feature branch (git checkout -b feature/your-feature)
+
+Submit a pull request
