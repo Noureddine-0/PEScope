@@ -10,51 +10,51 @@ PEFile::PEFile(const char *filePath) {
     hFile  =  CreateFileA(filePath, GENERIC_READ , FILE_SHARE_READ|FILE_SHARE_WRITE , nullptr , OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL , nullptr);
     if (hFile == INVALID_HANDLE_VALUE) {
         const DWORD err = GetLastError();
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to open the file ...");
+        Utils::SystemError(static_cast<int>(err), "[!] Failed to open the file ");
     }
 
     LARGE_INTEGER li;
     if (!GetFileSizeEx(hFile, &li)) {
         const DWORD err = GetLastError();
         CloseHandle(hFile);
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to get file size ...");
+        Utils::SystemError(static_cast<int>(err), "[!] Failed to get file size ");
     }
 
     size = li.QuadPart;
-    if (size < IMAGE_DOS_HEADER_SIZE) Utils::FatalError("[!] File is too small ...");
+    if (size < IMAGE_DOS_HEADER_SIZE) Utils::FatalError("[!] File is too small ");
     hMapFile = CreateFileMappingA(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
     if (hMapFile == nullptr) {
         const DWORD err = GetLastError();
         CloseHandle(hFile);
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to create the file mapping ...");
+        Utils::SystemError(static_cast<int>(err), "[!] Failed to create the file mapping ");
     }
     lpAddress = MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, size);
     if (lpAddress == nullptr) {
         const DWORD err = GetLastError();
         CloseHandle(hMapFile);
         CloseHandle(hFile);
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to map view of the file ...");
+        Utils::SystemError(static_cast<int>(err), "[!] Failed to map view of the file ");
     }
 
     #ifdef DEBUG 
-    	std::cout << "[*] File opened successfully ..." << std::endl;
+    	std::cout << "[*] File opened successfully " << std::endl;
     #endif
 
 #else
     fd  =  open(filePath , O_RDONLY);
-    if (fd == -1) Utils::SystemError(errno , "[!] Failed to open the file ...");
+    if (fd == -1) Utils::SystemError(errno , "[!] Failed to open the file ");
     struct stat sb;
     if (fstat(fd , &sb) == -1) {
         close(fd);
-        Utils::SystemError(errno , "[!] Failed to stat the file ...");
+        Utils::SystemError(errno , "[!] Failed to stat the file ");
     }
     size = sb.st_size;
-    if (size < IMAGE_DOS_HEADER_SIZE) Utils::FatalError("File is too small ...");
+    if (size < IMAGE_DOS_HEADER_SIZE) Utils::FatalError("File is too small ");
     lpAddress  =  mmap(nullptr , size , PROT_READ , MAP_PRIVATE , fd , 0);
     close(fd);
     fd = -1;
     if (lpAddress == MAP_FAILED) {
-        Utils::SystemError(errno , "[!] Failed to map the file ...");
+        Utils::SystemError(errno , "[!] Failed to map the file ");
     }
 
     #ifdef DEBUG 
