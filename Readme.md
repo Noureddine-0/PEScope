@@ -46,4 +46,4 @@ Contributions are welcome! Please:
 
 ## :page_facing_up: License
 
-MIT License - See [LICENSE](https://github.com/Noureddine-0/PEScope/blob/main/LICENSE) for details.
+> MIT License - See [LICENSE](https://github.com/Noureddine-0/PEScope/blob/main/LICENSE) for details.
