@@ -38,8 +38,8 @@ cmake --build .
 ## :handshake: Contributing
 Contributions are welcome! Please:
 
-Fork the repository
+- **Fork the repository**
 
-Create a feature branch (git checkout -b feature/your-feature)
+- **Create a feature branch**
 
-Submit a pull request
+- **Submit a pull request**
