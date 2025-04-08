@@ -280,6 +280,7 @@ void PEFile::GetSections(){
         IMAGE_OPTIONAL_HEADER64* h64;
     };
 
+    DWORD dirNumber{} ;
     InfoSection* infoSection = nullptr;
 
     OptionalHeaderPtr optHeader = {};
@@ -304,8 +305,17 @@ void PEFile::GetSections(){
 
     PeInfo.SectionNumber = fileHeader->NumberOfSections;
     if (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER){
+        if (PeInfo.SectionNumber > PeInfo.MaxSectionNumber)
+            std::cout << "[?] WARNING : PE file has a high NumberOfSections " << PeInfo.SectionNumber
+            << " , for memory safety the maximim NumberOfSections is 20 but u can change it with -nsections argument" << '\n';
+        PeInfo.SectionNumber = std::min(PeInfo.SectionNumber , PeInfo.MaxSectionNumber); 
         PeInfo.ExceededStackSections = true;
-        PeInfo.Data.ptr =  new InfoSection[PeInfo.SectionNumber];
+        try{
+            PeInfo.Data.ptr =  new InfoSection[PeInfo.SectionNumber];
+        }catch(std::bad_alloc&){
+            std::cerr << "[!] ERROR: Failed to allocate memory for sections\n";
+            return;
+        }
         infoSection = PeInfo.Data.ptr;
 
     }else{
@@ -314,15 +324,31 @@ void PEFile::GetSections(){
 
     if (PeInfo.Is32Magic) {
 
-        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h32)->NumberOfRvaAndSizes) , size);
+        if ((optHeader.h32)->NumberOfRvaAndSizes < 16){
+            std::cout << "[?] NOTE : Non-standard NumberOfRvaAndSizes (" << optHeader.h32->NumberOfRvaAndSizes
+            << ")\n";
+        }
+
+        dirNumber = std::min((optHeader.h32)->NumberOfRvaAndSizes ,  static_cast<DWORD>(IMAGE_NUMBEROF_DIRECTORY_ENTRIES));
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + 
+            (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (PeInfo.SectionNumber)) , size);
         startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpAddress)+
-            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h32)->NumberOfRvaAndSizes));
+            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*dirNumber);
     }else{
-        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h64)->NumberOfRvaAndSizes) , size);
+
+        if ((optHeader.h64)->NumberOfRvaAndSizes < 16){
+            std::cout << "[?] NOTE : Non-standard NumberOfRvaAndSizes (" << optHeader.h64->NumberOfRvaAndSizes
+            << ")\n";
+        }
+
+        dirNumber =  std::min(((optHeader.h64)->NumberOfRvaAndSizes) ,  static_cast<DWORD>(IMAGE_NUMBEROF_DIRECTORY_ENTRIES));
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + 
+            (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (PeInfo.SectionNumber)), size);
         startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpAddress)+
-            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h64)->NumberOfRvaAndSizes));
+            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*dirNumber);
     
     }
+
 
     for (size_t section = 0  ; section < PeInfo.SectionNumber ; section++ ){
         memcpy(reinterpret_cast<void *>(&(infoSection->sectionHeader)) ,
@@ -330,6 +356,11 @@ void PEFile::GetSections(){
          IMAGE_SECTION_HEADER_SIZE);
     }
 
+}
+
+
+void PEFile::ChangeMaxSectionNumber(DWORD Max){
+    PeInfo.MaxSectionNumber =  std::max(Max , PeInfo.MaxSectionNumber);
 }
 
 void PEFile::Parse(){

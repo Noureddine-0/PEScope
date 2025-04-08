@@ -31,6 +31,7 @@
 #include <cstring>
 #include <iostream>
 #include <system_error>
+#include<algorithm>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 

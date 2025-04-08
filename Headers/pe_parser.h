@@ -3,7 +3,7 @@
 
 
 
-constexpr int  INITIAL_SECTION_NUMBER = 8 ;
+constexpr int  INITIAL_SECTION_NUMBER = 10 ;
 
 struct InfoSection{
 
@@ -23,7 +23,8 @@ union SectionsData{
 
 struct PEInfo{
 
-    DWORD SectionNumber = 6; 
+    DWORD SectionNumber = 10;
+    DWORD MaxSectionNumber = 20; 
 
     SectionsData Data;
 
@@ -51,6 +52,7 @@ struct PEFile {
 private:
 
     void LoadFromFile(const char *);
+    void ChangeMaxSectionNumber(DWORD);
     bool IsValidPE()  ;
     void GetMachine() ;
     void GetCharacteristics();
