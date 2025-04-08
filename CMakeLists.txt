@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.21)
 project(PEScope VERSION 0.1.0 LANGUAGES CXX)
 
+
+
+include(TestBigEndian)
+test_big_endian(IS_BIG_ENDIAN)
+if (IS_BIG_ENDIAN)
+    message(FATAL_ERROR "This project requires a little-endian system.")
+endif()
+
+
 add_executable(PEScope
 			 src/main.cpp
 			 src/pe_parser.cpp

@@ -32,6 +32,7 @@
 #include <iostream>
 #include <system_error>
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 
 
 #define CHECK_OFFSET(X, Y) \

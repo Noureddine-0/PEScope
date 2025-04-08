@@ -5,7 +5,24 @@
 
 
 
-PEFile::PEFile(const char *filePath) {
+/**
+ * Loads a Portable Executable (PE) file into memory.
+ * 
+ * This method opens a PE file from disk, retrieves its size, and maps its contents
+ * into memory for further analysis or processing. It handles both Windows and 
+ * Unix-like systems using platform-specific APIs. On Windows, it uses CreateFile,
+ * CreateFileMapping, and MapViewOfFile. On Unix-like systems, it uses open, fstat, 
+ * and mmap.
+ * 
+ * Errors encountered during the file loading process are handled through the Utils 
+ * error reporting system. If the file is too small or mapping fails, a fatal error 
+ * is triggered.
+ * 
+ * @param filePath Path to the PE file on disk.
+ */
+
+
+void PEFile::LoadFromFile(const char *filePath) {
 #ifdef _WIN32
     hFile  =  CreateFileA(filePath, GENERIC_READ , FILE_SHARE_READ|FILE_SHARE_WRITE , nullptr , OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL , nullptr);
     if (hFile == INVALID_HANDLE_VALUE) {
@@ -66,6 +83,19 @@ PEFile::PEFile(const char *filePath) {
 }
 
 
+
+PEFile::PEFile(const char *filePath){
+    PEFile::LoadFromFile(filePath);
+}
+
+/**
+ * Destructor for the PEFile class.
+ * 
+ * Releases memory and file resources associated with the mapped PE file.
+ * On Windows, it unmaps the file view and closes the file and mapping handles.
+ * On Unix-like systems, it unmaps the memory using munmap.
+ */
+
 PEFile::~PEFile(){
     #ifdef _WIN32
         UnmapViewOfFile(lpAddress);
@@ -77,16 +107,49 @@ PEFile::~PEFile(){
 }
 
 
+/**
+ * Validates whether the loaded file is a proper PE (Portable Executable) file.
+ * 
+ * This method performs structural validation on the memory-mapped file to determine
+ * if it conforms to the PE format. It begins by interpreting the start of the mapped
+ * memory as an IMAGE_DOS_HEADER and checks for the 'MZ' DOS signature (`0x5A4D`).
+ * 
+ * If the DOS header is valid, it retrieves the `e_lfanew` field — the offset to the
+ * NT header — and stores it internally for later access. Then, it ensures the offset
+ * is within valid bounds to avoid accessing memory outside the mapped file.
+ * 
+ * It finally checks whether the DWORD located at `e_lfanew` corresponds to the NT
+ * signature (`PE\0\0`, or `0x00004550`).
+ * 
+ * @note Some PE files, especially highly packed, crafted, or legacy ones, merge
+ *       the NT header with unused fields of the DOS header. This means
+ *       NT headers can start at lower offsets than typical compiler-generated files.
+ *       As such, hard assumptions about minimum size or padding can be misleading.
+ * 
+ * @note The smallest known valid PE file is only 76 bytes in size, crafted to
+ *       exploit minimal structural requirements. Because of this, this function
+ *       uses a strict boundary check based on the exact required number of bytes,
+ *       rather than assuming a standard or padded layout.
+ * 
+ * @return true if the file has a valid DOS and NT signature and offset; false otherwise.
+ */
 
 bool PEFile::IsValidPE() {
     const auto DosHeader=  static_cast<IMAGE_DOS_HEADER*>(lpAddress);
     if (DosHeader->e_magic != IMAGE_DOS_SIGNATURE) return false;
     const DWORD PeOffset = DosHeader->e_lfanew;
     this->e_lfanew = PeOffset;
-    CHECK_OFFSET(PeOffset + IMAGE_FILE_HEADER_SIZE + IMAGE_NT_SIGNATURE_SIZE + 4, size); // We can check more size here , 4 to include magic for arch
+    CHECK_OFFSET(PeOffset + IMAGE_FILE_HEADER_SIZE + IMAGE_NT_SIGNATURE_SIZE + 4, size);
     return *(reinterpret_cast<DWORD*>(reinterpret_cast<ULONGLONG>(lpAddress)+PeOffset)) == IMAGE_NT_SIGNATURE;
 }
 
+/**
+ * Extracts and classifies the PE file type (EXE, DLL, SYS, or UNK).
+ * 
+ * Parses the IMAGE_FILE_HEADER to inspect the `Characteristics` field and 
+ * stores a short string label ("EXE", "DLL", "SYS", or "UNK") in the internal 
+ * `PeInfo` structure based on the file's purpose.
+ */
 
 void PEFile::GetCharacteristics(){
     const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
@@ -110,6 +173,16 @@ void PEFile::GetCharacteristics(){
     strncpy(reinterpret_cast<char *>(ptr) , "UNK" , 4);
 
 }
+
+
+/**
+ * Determines the target architecture of the PE file.
+ * 
+ * Parses the `Machine` field in the IMAGE_FILE_HEADER to identify the processor 
+ * architecture (e.g., x86, x64, ARM, Itanium, etc.). Stores the result as a short 
+ * descriptive string in the internal `PeInfo.Machine` buffer.
+ */
+
 
 void PEFile::GetMachine(){
     const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
@@ -140,6 +213,14 @@ void PEFile::GetMachine(){
 }
 
 
+/**
+ * Identifies whether the PE file is 32-bit or 64-bit.
+ * 
+ * Reads the `Magic` field from the Optional Header to determine the architecture 
+ * type (`0x10B` for PE32 or `0x20B` for PE32+). Stores the result in `PeInfo.Is32Magic`.
+ * Triggers a fatal error if the magic value is invalid.
+ */
+
 void PEFile::GetMagic(){
     const size_t magicOffset  =  e_lfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
     auto magic  =  *reinterpret_cast<WORD*>(
@@ -156,9 +237,99 @@ void PEFile::GetMagic(){
     }
 }
 
+/**
+ * Computes and stores cryptographic hashes of the entire PE file.
+ * 
+ * Generates MD5, SHA-1, and SHA-256 hashes of the mapped file content and stores 
+ * them in the corresponding fields of the `PeInfo` structure for identification, 
+ * integrity checking, or malware signature matching. Support for ssdeep (fuzzy 
+ * hashing) will be added later for improved similarity-based file matching.
+ */
+
 
 void PEFile::GetHashes(){
+    Utils::GetMd5(lpAddress , size , PeInfo.Md5);
+    Utils::GetSha1(lpAddress , size , PeInfo.Sha1);
     Utils::GetSha256(lpAddress , size , PeInfo.Sha256);
+}
+
+void PEFile::GetTimeDateStamp(){
+    const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
+    const auto   fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
+        reinterpret_cast<ULONGLONG>(lpAddress) + headerOffset);
+    TimeDateStamp =  fileHeader->TimeDateStamp;
+}
+
+/**
+ * Parses and extracts section headers from a PE file loaded in memory.
+ *
+ * Supports both 32-bit and 64-bit PE formats by detecting the magic number
+ * and using the appropriate optional header structure.
+ *
+ * Section headers are stored in PeInfo.Data:
+ * - Uses a preallocated stack array if the number of sections is small.
+ * - Dynamically allocates memory if the section count exceeds the threshold.
+ *
+ * Performs boundary checks to ensure safe access within the mapped image.
+ */
+
+void PEFile::GetSections(){
+
+    union OptionalHeaderPtr {
+        IMAGE_OPTIONAL_HEADER32* h32;
+        IMAGE_OPTIONAL_HEADER64* h64;
+    };
+
+    InfoSection* infoSection = nullptr;
+
+    OptionalHeaderPtr optHeader = {};
+    IMAGE_SECTION_HEADER* startSectionHeader =  nullptr;
+
+    const DWORD optionalHeaderOffset =  e_lfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
+    if(PeInfo.Is32Magic){
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE , size);
+        optHeader.h32 = reinterpret_cast<IMAGE_OPTIONAL_HEADER32*>(
+            reinterpret_cast<ULONGLONG>(lpAddress) + optionalHeaderOffset);
+
+    }else{
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE , size);
+        optHeader.h64 = reinterpret_cast<IMAGE_OPTIONAL_HEADER64*>(
+            reinterpret_cast<ULONGLONG>(lpAddress) + optionalHeaderOffset);
+    }
+
+    const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
+    const auto   fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
+        reinterpret_cast<ULONGLONG>(lpAddress) + headerOffset);
+
+
+    PeInfo.SectionNumber = fileHeader->NumberOfSections;
+    if (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER){
+        PeInfo.ExceededStackSections = true;
+        PeInfo.Data.ptr =  new InfoSection[PeInfo.SectionNumber];
+        infoSection = PeInfo.Data.ptr;
+
+    }else{
+        infoSection =  PeInfo.Data.Sections;
+    }
+
+    if (PeInfo.Is32Magic) {
+
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h32)->NumberOfRvaAndSizes) , size);
+        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpAddress)+
+            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h32)->NumberOfRvaAndSizes));
+    }else{
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h64)->NumberOfRvaAndSizes) , size);
+        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpAddress)+
+            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*((optHeader.h64)->NumberOfRvaAndSizes));
+    
+    }
+
+    for (size_t section = 0  ; section < PeInfo.SectionNumber ; section++ ){
+        memcpy(reinterpret_cast<void *>(&(infoSection->sectionHeader)) ,
+         startSectionHeader + section ,
+         IMAGE_SECTION_HEADER_SIZE);
+    }
+
 }
 
 void PEFile::Parse(){
@@ -167,4 +338,6 @@ void PEFile::Parse(){
     GetCharacteristics();
     GetMagic();
     GetHashes();
+    GetTimeDateStamp();
+    GetSections();
 }
