@@ -4,7 +4,7 @@ project(PEScope VERSION 0.1.0 LANGUAGES CXX)
 
 
 include(TestBigEndian)
-include(ExternalProject)
+
 test_big_endian(IS_BIG_ENDIAN)
 if (IS_BIG_ENDIAN)
     message(FATAL_ERROR "This project requires a little-endian system.")
@@ -28,7 +28,7 @@ endif()
 
 message(STATUS "Release Flags : ${CMAKE_CXX_FLAGS_RELEASE}")
 message(STATUS "Debug flags : ${CMAKE_CXX_FLAGS_DEBUG}")
-message(STATUS "xxxxxxxxxxxxxxxxxxxxxx:${CMAKE_BINARY_DIR}" )
+
 
 include_directories(Headers)
 
