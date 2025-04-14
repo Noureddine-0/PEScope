@@ -25,7 +25,7 @@ void Utils::SystemError(int ErrorCode, const char *ErrorMessage) {
 #endif
     }catch(std::system_error& e) {
         std::cerr << e.what() << '\n';
-        std::cerr << "[*] Existing ..."<< '\n';
+        std::cerr << "[*] Exiting ..."<< '\n';
         std::exit(EXIT_FAILURE);
     }
 }

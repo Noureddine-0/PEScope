@@ -239,9 +239,6 @@ struct IMAGE_EXPORT_DIRECTORY {
 
 #pragma pack(pop)
 
-#endif
-
-
 // Characteristics
 constexpr WORD IMAGE_FILE_EXECUTABLE_IMAGE = 0x0002;
 constexpr WORD IMAGE_FILE_SYSTEM =  0x1000;
@@ -275,6 +272,10 @@ constexpr WORD IMAGE_FILE_MACHINE_AMD64     = 0x8664;  // AMD64 (x64)
 constexpr WORD IMAGE_FILE_MACHINE_M32R      = 0x9041;  // M32R little-endian
 constexpr WORD IMAGE_FILE_MACHINE_ARM64     = 0xAA64;  // ARM64 Little-Endian
 constexpr WORD IMAGE_FILE_MACHINE_CEE       = 0xC0EE;
+
+#endif
+
+
 
 // Other constants
 
