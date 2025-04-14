@@ -29,10 +29,10 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
 ## :page_facing_up: Note on OpenSSL Integration
->  ⚠️ Current OpenSSL Build Strategy
+### >  ⚠️ Current OpenSSL Build Strategy
 For now, this project relies on an **external CMake integration repository** for building OpenSSL automatically. This handles downloading, configuring, and building both libssl and libcrypto as shared libraries (.dll or .so depending on platform).
 
-> :hammer_and_wrench: Planned Improvement
+### > :hammer_and_wrench: Planned Improvement
 In the future, I intend to **fully manage the OpenSSL build process**, by individually building `libssl` and `libcrypto` from the official OpenSSL sources. This will give us better control, allow for static linking, and improve reproducibility and security.
 
 ## 🌐 Cross-Platform Support
