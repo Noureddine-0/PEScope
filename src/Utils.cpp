@@ -101,14 +101,33 @@ void Utils::GetSha1(LPCVOID Address, size_t size, std::array<uint8_t, 20>& hash)
  * @param hash Output array for the hash (32 bytes)
  */
 
-void Utils::GetSha256(LPCVOID Address, size_t size, std::array<uint8_t, 32>& hash) {
+void Utils::GetSha256(LPCVOID lpAddress, size_t size, std::array<uint8_t, 32>& hash) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
     if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) &&
-        EVP_DigestUpdate(ctx, Address, size) &&
+        EVP_DigestUpdate(ctx, lpAddress, size) &&
         EVP_DigestFinal_ex(ctx, hash.data(), nullptr)) {
     }
     
     EVP_MD_CTX_free(ctx);
+}
+
+
+void Utils::CalculateEntropy(LPCVOID lpAddress , size_t size , double* entropy){
+    
+    double probability;
+    std::unordered_map<unsigned char , size_t> frequency;
+
+    if(!size) return ;
+
+    const unsigned char* bytes  =  static_cast<const unsigned char*>(lpAddress);
+
+    for(size_t i = 0 ;i < size ; i++)
+        frequency[bytes[i]]++;
+
+    for (const auto& pair : frequency){
+        probability = static_cast<double>(pair.second) / size;
+        *entropy -=probability * log2(probability);
+    }
 }

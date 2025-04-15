@@ -27,11 +27,13 @@
 #endif
 
 #include <array>
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <system_error>
-#include<algorithm>
+#include <unordered_map>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 

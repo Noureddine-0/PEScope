@@ -7,4 +7,5 @@ namespace Utils {
     void GetSha256(LPCVOID , size_t , std::array<uint8_t , 32>&);
     void GetSha1(LPCVOID , size_t , std::array<uint8_t , 20>&);
     void GetMd5(LPCVOID , size_t , std::array<uint8_t , 16>&);
+    void CalculateEntropy(LPCVOID , size_t , double*);
 }

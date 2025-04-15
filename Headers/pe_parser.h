@@ -7,26 +7,33 @@ constexpr int  INITIAL_SECTION_NUMBER = 10 ;
 
 struct InfoSection{
 
-    IMAGE_SECTION_HEADER sectionHeader;
+    IMAGE_SECTION_HEADER sectionHeader{};
     
-    double entropy;
+    double entropy{};
 
     char  Md5[16];
     char  Sha1[20];
     char  Sha256[32];
 };
 
-union SectionsData{
-        InfoSection Sections[INITIAL_SECTION_NUMBER];
-        InfoSection *ptr;
-    };
+
 
 struct PEInfo{
 
-    DWORD SectionNumber = 10;
-    DWORD MaxSectionNumber = 20; 
 
-    SectionsData Data;
+    PEInfo() =  default;
+    ~PEInfo() {
+        if (ptr){
+            printf("%p\n",ptr );
+            delete[] ptr;
+        }
+    }
+
+    DWORD SectionNumber = 10;
+    DWORD MaxSectionNumber = 16; 
+
+    InfoSection Sections[INITIAL_SECTION_NUMBER];
+    InfoSection *ptr = nullptr;
 
 
     std::array<uint8_t , 16> Machine{};
@@ -43,6 +50,7 @@ struct PEInfo{
 
 struct PEFile {
 
+    PEFile() = default;
     explicit PEFile(const char* filePath);
     ~PEFile() noexcept ;
 
@@ -60,6 +68,8 @@ private:
     void GetHashes();
     void GetTimeDateStamp();
     void GetSections();
+    void GetSectionsEntropy();
+    void GetFileEntropy();
 
 
     #ifdef _WIN32
@@ -69,13 +79,14 @@ private:
         int fd = -1;
     #endif
 
-    struct PEInfo PeInfo;
+    struct PEInfo PeInfo{};
 
     
 
     LPVOID lpAddress = nullptr;
     size_t size = 0;
-
+    double fentropy{};
+    
     DWORD e_lfanew{};
 
     DWORD TimeDateStamp{};

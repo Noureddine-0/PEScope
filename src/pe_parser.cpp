@@ -171,7 +171,6 @@ void PEFile::GetCharacteristics(){
     }
 
     strncpy(reinterpret_cast<char *>(ptr) , "UNK" , 4);
-
 }
 
 
@@ -266,9 +265,6 @@ void PEFile::GetTimeDateStamp(){
  * Supports both 32-bit and 64-bit PE formats by detecting the magic number
  * and using the appropriate optional header structure.
  *
- * Section headers are stored in PeInfo.Data:
- * - Uses a preallocated stack array if the number of sections is small.
- * - Dynamically allocates memory if the section count exceeds the threshold.
  *
  * Performs boundary checks to ensure safe access within the mapped image.
  */
@@ -281,8 +277,8 @@ void PEFile::GetSections(){
     };
 
     DWORD dirNumber{} ;
-    InfoSection* infoSection = nullptr;
 
+    InfoSection* infoSection =  nullptr;
     OptionalHeaderPtr optHeader = {};
     IMAGE_SECTION_HEADER* startSectionHeader =  nullptr;
 
@@ -311,15 +307,16 @@ void PEFile::GetSections(){
         PeInfo.SectionNumber = std::min(PeInfo.SectionNumber , PeInfo.MaxSectionNumber); 
         PeInfo.ExceededStackSections = true;
         try{
-            PeInfo.Data.ptr =  new InfoSection[PeInfo.SectionNumber];
+            PeInfo.ptr =  new InfoSection[PeInfo.SectionNumber];
         }catch(std::bad_alloc&){
             std::cerr << "[!] ERROR: Failed to allocate memory for sections\n";
             return;
         }
-        infoSection = PeInfo.Data.ptr;
+        infoSection = PeInfo.ptr;
 
     }else{
-        infoSection =  PeInfo.Data.Sections;
+        infoSection =  PeInfo.Sections;
+
     }
 
     if (PeInfo.Is32Magic) {
@@ -354,6 +351,7 @@ void PEFile::GetSections(){
         memcpy(reinterpret_cast<void *>(&(infoSection->sectionHeader)) ,
          startSectionHeader + section ,
          IMAGE_SECTION_HEADER_SIZE);
+        infoSection++;
     }
 
 }
@@ -361,6 +359,19 @@ void PEFile::GetSections(){
 
 void PEFile::ChangeMaxSectionNumber(DWORD Max){
     PeInfo.MaxSectionNumber =  std::max(Max , PeInfo.MaxSectionNumber);
+}
+
+void PEFile::GetSectionsEntropy(){
+    InfoSection* ptr = nullptr;
+    (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER) ? ptr =  PeInfo.ptr :
+        ptr =  PeInfo.Sections;
+
+    for (size_t nsection = 0 ; nsection < PeInfo.SectionNumber ; nsection++,ptr++ ){
+        Utils::CalculateEntropy(reinterpret_cast<LPCVOID>(
+            (ptr->sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
+            &(ptr->entropy));
+    }
 }
 
 void PEFile::Parse(){
@@ -371,4 +382,8 @@ void PEFile::Parse(){
     GetHashes();
     GetTimeDateStamp();
     GetSections();
+    GetSectionsEntropy();
+    for (size_t nsection= 0 ; nsection < PeInfo.SectionNumber ; nsection++){
+        std::cout << PeInfo.Sections[nsection].entropy << std::endl;
+    }
 }
