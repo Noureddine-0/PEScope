@@ -260,14 +260,38 @@ void PEFile::GetTimeDateStamp(){
 }
 
 /**
- * Parses and extracts section headers from a PE file loaded in memory.
+ * Parses and stores section headers from a Portable Executable (PE) file.
  *
- * Supports both 32-bit and 64-bit PE formats by detecting the magic number
- * and using the appropriate optional header structure.
+ * This function extracts the section headers from the PE file mapped at `lpAddress`
+ * and stores them in the internal `PeInfo` structure. It supports both PE32 and PE32+ formats
+ * by interpreting the correct optional header and determining the number of data directories.
+ * 
+ * The function dynamically allocates memory for section metadata if the number of sections
+ * exceeds a defined threshold (`INITIAL_SECTION_NUMBER`). This ensures flexibility when dealing
+ * with non-standard or maliciously crafted PE files that declare a large number of sections.
  *
+ * @details
+ * - Determines the offset of the optional header based on the PE magic.
+ * - Validates memory bounds to prevent out-of-bounds access using `CHECK_OFFSET`.
+ * - Calculates the address of the section header table.
+ * - If the section count exceeds `INITIAL_SECTION_NUMBER`, it dynamically allocates space
+ *   using `new InfoSection[]`, capped at `PeInfo.MaxSectionNumber` for safety.
+ * - Copies each `IMAGE_SECTION_HEADER` into `InfoSection` entries.
  *
- * Performs boundary checks to ensure safe access within the mapped image.
+ * @warning
+ * - Malformed or malicious PE files may report extremely high `NumberOfSections`.
+ *   This implementation limits allocation to a max (`MaxSectionNumber`) to avoid OOM or DoS.
+ * - If the `NumberOfRvaAndSizes` field is below 16, a warning is shown since it's uncommon.
+ * 
+ * @note
+ * - The entropy or other metadata for each section is not calculated here — this is purely
+ *   structural extraction.
+ * - The original pointer `lpAddress` must point to a fully loaded or memory-mapped PE file,
+ *   and the total file size (`size`) must be known beforehand.
+ *
+ * @see PEFile::ParseOptionalHeader(), Utils::CalculateEntropy()
  */
+
 
 void PEFile::GetSections(){
 
@@ -361,12 +385,38 @@ void PEFile::ChangeMaxSectionNumber(DWORD Max){
     PeInfo.MaxSectionNumber =  std::max(Max , PeInfo.MaxSectionNumber);
 }
 
+/**
+ * @brief Computes the entropy for each section in the PE file.
+ *
+ * This function iterates over all parsed section headers and calculates the Shannon
+ * entropy of each section's raw data using `Utils::CalculateEntropy()`. The result
+ * is stored in the corresponding `InfoSection::entropy` field for each section.
+ *
+ * @details
+ * - Before analyzing each section, it validates that the section's raw data boundaries
+ *   (i.e., `PointerToRawData + SizeOfRawData`) fall within the bounds of the loaded
+ *   PE image (`size`) using `CHECK_OFFSET`.
+ * - Handles both static and dynamically allocated section arrays depending on the
+ *   section count and memory model used.
+ * - Entropy helps identify suspicious sections that may be packed, encrypted,
+ *   or otherwise obfuscated.
+ *
+ * @warning
+ * - Fails hard with a fatal error if a section points outside the bounds of the PE image.
+ * - Assumes that `lpAddress` and `size` refer to the full loaded file in memory.
+ *
+ * @see Utils::CalculateEntropy()
+ * @see PEFile::GetSections()
+ */
+
 void PEFile::GetSectionsEntropy(){
     InfoSection* ptr = nullptr;
     (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER) ? ptr =  PeInfo.ptr :
         ptr =  PeInfo.Sections;
 
+
     for (size_t nsection = 0 ; nsection < PeInfo.SectionNumber ; nsection++,ptr++ ){
+        CHECK_OFFSET((ptr->sectionHeader).PointerToRawData + (ptr->sectionHeader).SizeOfRawData , size);
         Utils::CalculateEntropy(reinterpret_cast<LPCVOID>(
             (ptr->sectionHeader).PointerToRawData + 
             reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,

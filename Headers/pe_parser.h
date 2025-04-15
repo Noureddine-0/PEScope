@@ -30,7 +30,7 @@ struct PEInfo{
     }
 
     DWORD SectionNumber = 10;
-    DWORD MaxSectionNumber = 16; 
+    DWORD MaxSectionNumber = 20; 
 
     InfoSection Sections[INITIAL_SECTION_NUMBER];
     InfoSection *ptr = nullptr;
