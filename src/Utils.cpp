@@ -1,5 +1,5 @@
 #include <Utils.h>
-#include <header.h>
+#include <pe_structs.h>
 #include <openssl/md5.h>
 
 
@@ -55,17 +55,17 @@ void Utils::FatalError(const char* Error){
  * - EVP provides a consistent API for all digest algorithms
  * - Future compatibility with OpenSSL versions
  * 
- * @param Address Input data to hash
+ * @param lpAddress Input data to hash
  * @param size Length of input data in bytes
  * @param hash Output array (must be 16 bytes)
  */
 
-void Utils::GetMd5(LPCVOID Address , size_t size , std::array<uint8_t , 16>& hash){
+void Utils::GetMd5(LPCVOID lpAddress , size_t size , std::array<uint8_t , MD5_HASH_LEN>& hash){
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
     if (EVP_DigestInit_ex(ctx, EVP_md5(), nullptr) &&
-        EVP_DigestUpdate(ctx, Address, size) &&
+        EVP_DigestUpdate(ctx, lpAddress, size) &&
         EVP_DigestFinal_ex(ctx, hash.data(), nullptr)) {
     }
     EVP_MD_CTX_free(ctx);
@@ -75,17 +75,17 @@ void Utils::GetMd5(LPCVOID Address , size_t size , std::array<uint8_t , 16>& has
 /**
  * Computes SHA-1 hash of input data using OpenSSL's EVP interface.
  * 
- * @param Address Pointer to input data
+ * @param lpAddress Pointer to input data
  * @param size Length of input data in bytes
  * @param hash Output array for the hash (20 bytes)
  */
 
-void Utils::GetSha1(LPCVOID Address, size_t size, std::array<uint8_t, 20>& hash) {
+void Utils::GetSha1(LPCVOID lpAddress, size_t size, std::array<uint8_t, SHA1_HASH_LEN>& hash) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
     if (EVP_DigestInit_ex(ctx, EVP_sha1(), nullptr) &&
-        EVP_DigestUpdate(ctx, Address, size) &&
+        EVP_DigestUpdate(ctx, lpAddress, size) &&
         EVP_DigestFinal_ex(ctx, hash.data(), nullptr)) {
     }
     
@@ -96,12 +96,12 @@ void Utils::GetSha1(LPCVOID Address, size_t size, std::array<uint8_t, 20>& hash)
 /**
  * Computes SHA-256 hash of input data using OpenSSL's EVP interface.
  * 
- * @param Address Pointer to input data
+ * @param lpAddress Pointer to input data
  * @param size Length of input data in bytes
  * @param hash Output array for the hash (32 bytes)
  */
 
-void Utils::GetSha256(LPCVOID lpAddress, size_t size, std::array<uint8_t, 32>& hash) {
+void Utils::GetSha256(LPCVOID lpAddress, size_t size, std::array<uint8_t, SHA256_HASH_LEN>& hash) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
@@ -113,6 +113,23 @@ void Utils::GetSha256(LPCVOID lpAddress, size_t size, std::array<uint8_t, 32>& h
     EVP_MD_CTX_free(ctx);
 }
 
+/**
+ * Calculates the Shannon entropy of a memory buffer.
+ *
+ * This function analyzes a block of memory pointed to by `lpAddress` and computes
+ * its Shannon entropy based on the frequency distribution of byte values (0x00 to 0xFF).
+ * The entropy value reflects the randomness of the data, where higher entropy indicates
+ * more randomness (e.g., compressed or encrypted data), and lower entropy suggests
+ * more predictable content (e.g., zeroed memory or plain text).
+ *
+ * @param lpAddress Pointer to the memory buffer to analyze.
+ * @param size The size of the buffer in bytes.
+ * @param entropy Pointer to a double where the resulting entropy will be stored.
+ *
+ * @note If the buffer size is 0, the function returns immediately without modifying entropy.
+ *       The entropy value is **accumulated** onto the value pointed by `entropy`.
+ *
+ */
 
 void Utils::CalculateEntropy(LPCVOID lpAddress , size_t size , double* entropy){
     
@@ -130,4 +147,29 @@ void Utils::CalculateEntropy(LPCVOID lpAddress , size_t size , double* entropy){
         probability = static_cast<double>(pair.second) / size;
         *entropy -=probability * log2(probability);
     }
+}
+
+void Utils::ConvertTimeStamp(uint32_t TimeStamp , char* TimeStampString){
+    
+    struct tm time_info;
+
+    time_t raw_time  =  static_cast<time_t>(TimeStamp);
+
+
+    #ifdef _WIN32
+    localtime_s(&time_info , &raw_time);
+    #else
+    localtime_r(&raw_time, &time_info);
+    #endif
+
+    strftime(TimeStampString, TIMESTAMP_LEN , "%Y-%m-%d %H:%M:%S" , &time_info);
+}
+
+void Utils::bytesToHexString(const uint8_t* bytes, size_t size, uint8_t* hexOutput) {
+    const uint8_t hexChars[] = "0123456789abcdef";  // Lowercase
+    for (size_t i = 0; i < size; ++i) {
+        hexOutput[i * 2]     = hexChars[(bytes[i] >> 4) & 0x0F];  // High nibble
+        hexOutput[i * 2 + 1] = hexChars[bytes[i] & 0x0F];         // Low nibble
+    }
+    hexOutput[size * 2] = '\0';  // Null-terminate
 }

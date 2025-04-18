@@ -161,16 +161,17 @@ void PEFile::GetCharacteristics(){
         strncpy(reinterpret_cast<char *>(ptr) , "EXE" , 4);
         return;
     }
-    if (fileHeader->Characteristics & IMAGE_FILE_DLL) {
+    else if (fileHeader->Characteristics & IMAGE_FILE_DLL) {
         strncpy(reinterpret_cast<char *>(ptr) , "DLL" , 4);
         return;
     }
-    if (fileHeader->Characteristics & IMAGE_FILE_SYSTEM) {
+    else if (fileHeader->Characteristics & IMAGE_FILE_SYSTEM) {
         strncpy(reinterpret_cast<char *>(ptr) , "SYS" , 4);
-        return ;
+        return;
     }
 
     strncpy(reinterpret_cast<char *>(ptr) , "UNK" , 4);
+
 }
 
 
@@ -246,17 +247,26 @@ void PEFile::GetMagic(){
  */
 
 
-void PEFile::GetHashes(){
-    Utils::GetMd5(lpAddress , size , PeInfo.Md5);
-    Utils::GetSha1(lpAddress , size , PeInfo.Sha1);
-    Utils::GetSha256(lpAddress , size , PeInfo.Sha256);
+void PEFile::GetFileHashes(){
+    std::array<uint8_t , MD5_HASH_LEN> md5;
+    std::array<uint8_t , SHA1_HASH_LEN> sha1;
+    std::array<uint8_t , SHA256_HASH_LEN> sha256;
+
+    Utils::GetMd5(lpAddress , size , md5);
+    Utils::GetSha1(lpAddress , size , sha1);
+    Utils::GetSha256(lpAddress , size , sha256);
+
+    Utils::bytesToHexString(md5.data() , MD5_HASH_LEN , PeInfo.Md5.data());
+    Utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , PeInfo.Sha1.data());
+    Utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , PeInfo.Sha256.data());
+
 }
 
 void PEFile::GetTimeDateStamp(){
     const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
     const auto   fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
         reinterpret_cast<ULONGLONG>(lpAddress) + headerOffset);
-    TimeDateStamp =  fileHeader->TimeDateStamp;
+    Utils::ConvertTimeStamp(fileHeader->TimeDateStamp , PeInfo.TimeStampString);
 }
 
 /**
@@ -424,16 +434,47 @@ void PEFile::GetSectionsEntropy(){
     }
 }
 
+
+void PEFile::GetSectionsHashes(){
+    InfoSection* ptr =  nullptr;
+
+    std::array<uint8_t , MD5_HASH_LEN> md5;
+    std::array<uint8_t , SHA1_HASH_LEN> sha1;
+    std::array<uint8_t , SHA256_HASH_LEN> sha256;
+
+    (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER) ? ptr =  PeInfo.ptr :
+        ptr =  PeInfo.Sections;
+
+    for(size_t nsection = 0; nsection < PeInfo.SectionNumber ; nsection++ , ptr++){
+        // At this point we already check offsets in GetSectionsEntropy , so we wont do it here
+        Utils::GetMd5(reinterpret_cast<LPCVOID>(
+            (ptr->sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
+            md5);
+
+        Utils::GetSha1(reinterpret_cast<LPCVOID>(
+            (ptr->sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
+            sha1);
+
+        Utils::GetSha256(reinterpret_cast<LPCVOID>(
+            (ptr->sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
+            sha256);
+
+        Utils::bytesToHexString(md5.data() , MD5_HASH_LEN , ptr->Md5.data());
+        Utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , ptr->Sha1.data());
+        Utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->Sha256.data());  
+    }
+}
 void PEFile::Parse(){
     (IsValidPE()) ? (void)(std::cout << "[*] Initial validation passed ...\n") : std::exit(EXIT_FAILURE);
     GetMachine();
     GetCharacteristics();
     GetMagic();
-    GetHashes();
+    GetFileHashes();
     GetTimeDateStamp();
     GetSections();
     GetSectionsEntropy();
-    for (size_t nsection= 0 ; nsection < PeInfo.SectionNumber ; nsection++){
-        std::cout << PeInfo.Sections[nsection].entropy << std::endl;
-    }
+    GetSectionsHashes();
 }

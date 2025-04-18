@@ -32,6 +32,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
+#include <ctime>
 #include <system_error>
 #include <unordered_map>
 #include <openssl/sha.h>
@@ -44,3 +45,8 @@
             Utils::FatalError("Invalid Offset encountered while parsing"); \
         } \
     } while (0)
+
+
+#define MD5_HASH_LEN 16
+#define SHA1_HASH_LEN 20
+#define SHA256_HASH_LEN 32

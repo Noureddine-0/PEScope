@@ -7,15 +7,15 @@ constexpr int  INITIAL_SECTION_NUMBER = 10 ;
 
 struct InfoSection{
 
+    double entropy{};
+    
     IMAGE_SECTION_HEADER sectionHeader{};
     
-    double entropy{};
 
-    char  Md5[16];
-    char  Sha1[20];
-    char  Sha256[32];
+    std::array<uint8_t , 2 * MD5_HASH_LEN + 1> Md5{};
+    std::array<uint8_t , 2 * SHA1_HASH_LEN + 1> Sha1{};
+    std::array<uint8_t , 2 * SHA256_HASH_LEN + 1> Sha256{};
 };
-
 
 
 struct PEInfo{
@@ -24,11 +24,10 @@ struct PEInfo{
     PEInfo() =  default;
     ~PEInfo() {
         if (ptr){
-            printf("%p\n",ptr );
             delete[] ptr;
         }
     }
-
+    char TimeStampString[80];
     DWORD SectionNumber = 10;
     DWORD MaxSectionNumber = 20; 
 
@@ -39,9 +38,9 @@ struct PEInfo{
     std::array<uint8_t , 16> Machine{};
     std::array<uint8_t ,  4> Characteristics{};
 
-    std::array<uint8_t , 16> Md5{};
-    std::array<uint8_t , 20> Sha1{};
-    std::array<uint8_t , 32> Sha256{};
+    std::array<uint8_t , 2 * MD5_HASH_LEN + 1> Md5{};
+    std::array<uint8_t , 2 * SHA1_HASH_LEN + 1> Sha1{};
+    std::array<uint8_t , 2 * SHA256_HASH_LEN + 1> Sha256{};
 
 
     bool  Is32Magic = false;
@@ -65,11 +64,12 @@ private:
     void GetMachine() ;
     void GetCharacteristics();
     void GetMagic();
-    void GetHashes();
+    void GetFileHashes();
     void GetTimeDateStamp();
     void GetSections();
     void GetSectionsEntropy();
     void GetFileEntropy();
+    void GetSectionsHashes();
 
 
     #ifdef _WIN32
@@ -88,6 +88,4 @@ private:
     double fentropy{};
     
     DWORD e_lfanew{};
-
-    DWORD TimeDateStamp{};
 };
