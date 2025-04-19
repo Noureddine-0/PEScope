@@ -1,1 +1,3 @@
 build/
+Headers/version.h
+version.rc

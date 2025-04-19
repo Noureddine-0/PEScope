@@ -473,7 +473,6 @@ void PEFile::GetImports(){
     DWORD importTableOffset ;
     DWORD nameRva;
     DWORD nameOffset;
-    DWORD 
 
     importTableRva= (
         (reinterpret_cast<IMAGE_DATA_DIRECTORY*>(lpDataDirectory) + 
