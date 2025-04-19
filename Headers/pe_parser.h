@@ -23,7 +23,7 @@ struct PEInfo{
 
     PEInfo() =  default;
     ~PEInfo() {
-        if (ptr){
+        if (ExceededStackSections){
             delete[] ptr;
         }
     }
