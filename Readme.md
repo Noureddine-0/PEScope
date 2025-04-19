@@ -22,7 +22,7 @@ PEScope is an **early-stage** cross-platform tool for parsing and analyzing PE f
 
 ### Build Steps  
 ```bash
-git clone https://github.com/Noureddine-0/PEScope.git
+git clone --recursive https://github.com/Noureddine-0/PEScope.git
 cd PEScope
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
