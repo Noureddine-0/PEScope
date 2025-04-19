@@ -346,12 +346,13 @@ void PEFile::GetSections(){
             std::cerr << "[!] ERROR: Failed to allocate memory for sections\n";
             return;
         }
-        infoSection = PeInfo.ptr;
 
     }else{
-        infoSection =  PeInfo.Sections;
+        PeInfo.ptr = PeInfo.Sections;
 
     }
+
+    infoSection = PeInfo.ptr;
 
     if (PeInfo.Is32Magic) {
 
@@ -363,8 +364,10 @@ void PEFile::GetSections(){
         dirNumber = std::min((optHeader.h32)->NumberOfRvaAndSizes ,  static_cast<DWORD>(IMAGE_NUMBEROF_DIRECTORY_ENTRIES));
         CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + 
             (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (PeInfo.SectionNumber)) , size);
-        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpAddress)+
-            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*dirNumber);
+        lpDataDirectory = reinterpret_cast<LPVOID>(reinterpret_cast<ULONGLONG>(lpAddress) +
+            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE);
+        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpDataDirectory) +
+            IMAGE_DATA_DIRECTORY_SIZE * dirNumber);
     }else{
 
         if ((optHeader.h64)->NumberOfRvaAndSizes < 16){
@@ -375,8 +378,10 @@ void PEFile::GetSections(){
         dirNumber =  std::min(((optHeader.h64)->NumberOfRvaAndSizes) ,  static_cast<DWORD>(IMAGE_NUMBEROF_DIRECTORY_ENTRIES));
         CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + 
             (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (PeInfo.SectionNumber)), size);
-        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpAddress)+
-            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + IMAGE_DATA_DIRECTORY_SIZE*dirNumber);
+        lpDataDirectory = reinterpret_cast<LPVOID>(reinterpret_cast<ULONGLONG>(lpAddress) + 
+            optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE);
+        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpDataDirectory) +
+            IMAGE_DATA_DIRECTORY_SIZE*dirNumber);
     
     }
 
@@ -420,10 +425,7 @@ void PEFile::ChangeMaxSectionNumber(DWORD Max){
  */
 
 void PEFile::GetSectionsEntropy(){
-    InfoSection* ptr = nullptr;
-    (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER) ? ptr =  PeInfo.ptr :
-        ptr =  PeInfo.Sections;
-
+    InfoSection* ptr = PeInfo.ptr;
 
     for (size_t nsection = 0 ; nsection < PeInfo.SectionNumber ; nsection++,ptr++ ){
         CHECK_OFFSET((ptr->sectionHeader).PointerToRawData + (ptr->sectionHeader).SizeOfRawData , size);
@@ -436,14 +438,11 @@ void PEFile::GetSectionsEntropy(){
 
 
 void PEFile::GetSectionsHashes(){
-    InfoSection* ptr =  nullptr;
+    InfoSection* ptr =  PeInfo.ptr;
 
     std::array<uint8_t , MD5_HASH_LEN> md5;
     std::array<uint8_t , SHA1_HASH_LEN> sha1;
     std::array<uint8_t , SHA256_HASH_LEN> sha256;
-
-    (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER) ? ptr =  PeInfo.ptr :
-        ptr =  PeInfo.Sections;
 
     for(size_t nsection = 0; nsection < PeInfo.SectionNumber ; nsection++ , ptr++){
         // At this point we already check offsets in GetSectionsEntropy , so we wont do it here
@@ -464,9 +463,38 @@ void PEFile::GetSectionsHashes(){
 
         Utils::bytesToHexString(md5.data() , MD5_HASH_LEN , ptr->Md5.data());
         Utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , ptr->Sha1.data());
-        Utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->Sha256.data());  
+        Utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->Sha256.data()); 
     }
 }
+
+void PEFile::GetImports(){
+
+    DWORD importTableRva;
+    DWORD importTableOffset ;
+    DWORD nameRva;
+    DWORD nameOffset;
+    DWORD 
+
+    importTableRva= (
+        (reinterpret_cast<IMAGE_DATA_DIRECTORY*>(lpDataDirectory) + 
+        IMAGE_DIRECTORY_ENTRY_IMPORT)->VirtualAddress);
+
+
+    importTableOffset  = Utils::SafeRvaToFileOffset(importTableRva, PeInfo.ptr , PeInfo.SectionNumber,__FUNCTION__);
+
+    CHECK_OFFSET(importTableOffset , size);
+    IMAGE_IMPORT_DESCRIPTOR* importTable = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(
+        reinterpret_cast<ULONGLONG>(lpAddress) + importTableOffset);
+
+    while((nameRva = importTable->Name)){
+        nameOffset = Utils::SafeRvaToFileOffset(nameRva , PeInfo.ptr , PeInfo.SectionNumber , __FUNCTION__);
+
+        CHECK_OFFSET(nameOffset , size);
+        std::cout << (char*)(lpAddress) + nameOffset << '\n'; 
+        importTable++;  
+    }
+}
+
 void PEFile::Parse(){
     (IsValidPE()) ? (void)(std::cout << "[*] Initial validation passed ...\n") : std::exit(EXIT_FAILURE);
     GetMachine();
@@ -477,4 +505,5 @@ void PEFile::Parse(){
     GetSections();
     GetSectionsEntropy();
     GetSectionsHashes();
+    GetImports();
 }

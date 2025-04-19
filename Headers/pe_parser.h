@@ -70,7 +70,7 @@ private:
     void GetSectionsEntropy();
     void GetFileEntropy();
     void GetSectionsHashes();
-
+    void GetImports();
 
     #ifdef _WIN32
         HANDLE hFile = INVALID_HANDLE_VALUE;
@@ -84,6 +84,7 @@ private:
     
 
     LPVOID lpAddress = nullptr;
+    LPVOID lpDataDirectory =  nullptr;
     size_t size = 0;
     double fentropy{};
     

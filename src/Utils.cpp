@@ -80,7 +80,7 @@ void Utils::GetMd5(LPCVOID lpAddress , size_t size , std::array<uint8_t , MD5_HA
  * @param hash Output array for the hash (20 bytes)
  */
 
-void Utils::GetSha1(LPCVOID lpAddress, size_t size, std::array<uint8_t, SHA1_HASH_LEN>& hash) {
+void Utils::GetSha1(LPCVOID lpAddress, const size_t size, std::array<uint8_t, SHA1_HASH_LEN>& hash) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
@@ -101,7 +101,7 @@ void Utils::GetSha1(LPCVOID lpAddress, size_t size, std::array<uint8_t, SHA1_HAS
  * @param hash Output array for the hash (32 bytes)
  */
 
-void Utils::GetSha256(LPCVOID lpAddress, size_t size, std::array<uint8_t, SHA256_HASH_LEN>& hash) {
+void Utils::GetSha256(LPCVOID lpAddress, const size_t size, std::array<uint8_t, SHA256_HASH_LEN>& hash) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
@@ -165,11 +165,33 @@ void Utils::ConvertTimeStamp(uint32_t TimeStamp , char* TimeStampString){
     strftime(TimeStampString, TIMESTAMP_LEN , "%Y-%m-%d %H:%M:%S" , &time_info);
 }
 
-void Utils::bytesToHexString(const uint8_t* bytes, size_t size, uint8_t* hexOutput) {
+void Utils::bytesToHexString(const uint8_t* bytes,const size_t size, uint8_t* hexOutput) {
     const uint8_t hexChars[] = "0123456789abcdef";  // Lowercase
     for (size_t i = 0; i < size; ++i) {
         hexOutput[i * 2]     = hexChars[(bytes[i] >> 4) & 0x0F];  // High nibble
         hexOutput[i * 2 + 1] = hexChars[bytes[i] & 0x0F];         // Low nibble
     }
     hexOutput[size * 2] = '\0';  // Null-terminate
+}
+
+DWORD Utils::RvaToFileOffset(DWORD dwRva ,const InfoSection* infoSections , size_t sectionCount){
+    for (size_t nsection = 0 ;  nsection < sectionCount ; nsection++ ,infoSections++){
+        DWORD vAddr = infoSections->sectionHeader.VirtualAddress;
+        DWORD vSize = infoSections->sectionHeader.Misc.VirtualSize;
+        if (dwRva >=  vAddr && dwRva < vSize + vAddr)
+            return (dwRva - vAddr) + infoSections->sectionHeader.PointerToRawData;
+    }
+
+    throw std::runtime_error("RVA can't be converted to file offset");
+}
+
+DWORD Utils::SafeRvaToFileOffset(DWORD dwRva ,const InfoSection* infoSections , size_t sectionCount ,
+ const char *CallerFunction){
+    try{
+        return Utils::RvaToFileOffset(dwRva , infoSections , sectionCount);
+    }catch(std::runtime_error& e){
+        std::cerr << "[!] ERROR: At function " << CallerFunction<<  " : " << e.what() << '\n';
+        std::cerr << "[*] Exiting ..."<< '\n';
+        std::exit(EXIT_FAILURE);
+    }
 }

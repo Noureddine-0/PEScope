@@ -38,6 +38,7 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 
+#include <version.h>
 
 #define CHECK_OFFSET(X, Y) \
     do { \
@@ -47,6 +48,6 @@
     } while (0)
 
 
-#define MD5_HASH_LEN 16
-#define SHA1_HASH_LEN 20
-#define SHA256_HASH_LEN 32
+constexpr int MD5_HASH_LEN =  16;
+constexpr int SHA1_HASH_LEN  = 20;
+constexpr int SHA256_HASH_LEN = 32;

@@ -1,15 +1,21 @@
-cmake_minimum_required(VERSION 3.21)
-project(PEScope VERSION 0.1.0 LANGUAGES CXX)
-
-
-
 include(TestBigEndian)
+include(cmake/version.cmake)
+
+
+cmake_minimum_required(VERSION 3.21)
+project(PEScope VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 
 test_big_endian(IS_BIG_ENDIAN)
 if (IS_BIG_ENDIAN)
     message(FATAL_ERROR "This project requires a little-endian system.")
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/conf/version.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/Headers/version.h)
 
 add_executable(PEScope
 			 src/main.cpp
@@ -18,12 +24,21 @@ add_executable(PEScope
 
 
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|clang")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}  -Wall -Wshadow -Wextra -DDEBUG")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wshadow -Wextra ")
+endif()
+
+if(WIN32)
+    include(GenerateExportHeader)
+    
+    set(RESOURCE_FILE ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/conf/version.rc.in
+        ${RESOURCE_FILE}
+    )
+    
+    target_sources(PEScope PRIVATE ${RESOURCE_FILE})
 endif()
 
 message(STATUS "Release Flags : ${CMAKE_CXX_FLAGS_RELEASE}")
@@ -44,7 +59,7 @@ add_subdirectory("external/openssl-cmake")
 target_link_libraries(PEScope PUBLIC ssl crypto)
 
 if(WIN32)
-    # Define where the OpenSSL DLLs are built (adjust to match your layout)
+
     set(OPENSSL_DLL_DIR "${CMAKE_BINARY_DIR}/external/openssl-cmake/openssl-prefix/src/openssl/usr/local/bin")
 
     # Copy DLLs to the PEScope output directory
