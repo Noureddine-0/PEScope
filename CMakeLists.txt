@@ -48,8 +48,6 @@ message(STATUS "Debug flags : ${CMAKE_CXX_FLAGS_DEBUG}")
 include_directories(Headers)
 
 # OpenSSL
-option(CROSS "Enable cross-compilation" OFF)
-option(BUILD_OPENSSL "Build OpenSSL from source" ON)
 set(OPENSSL_BUILD_VERSION "3.1.5" CACHE STRING "OpenSSL version to build")
 
 
