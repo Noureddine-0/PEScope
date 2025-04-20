@@ -1,4 +1,4 @@
-#include <Utils.h>
+#include <utils.h>
 #include <pe_structs.h>
 #include <openssl/md5.h>
 
@@ -16,7 +16,7 @@
  * - Terminates the program with EXIT_FAILURE
  */
 
-void Utils::SystemError(int ErrorCode, const char *ErrorMessage) {
+void utils::systemError(int ErrorCode, const char *ErrorMessage) {
     try{
 #ifdef _WIN32
     throw std::system_error(ErrorCode , std::system_category() , ErrorMessage);
@@ -41,7 +41,7 @@ void Utils::SystemError(int ErrorCode, const char *ErrorMessage) {
  * - Exits with failure status code (EXIT_FAILURE)
  */
 
-void Utils::FatalError(const char* Error){
+void utils::fatalError(const char* Error){
     std::cerr << "[!] Fatal Error: "<< Error << '\n';
     std::cerr << "[*] Exiting ..." << '\n';
     std::exit(EXIT_FAILURE);
@@ -60,7 +60,7 @@ void Utils::FatalError(const char* Error){
  * @param hash Output array (must be 16 bytes)
  */
 
-void Utils::GetMd5(LPCVOID lpAddress , size_t size , std::array<uint8_t , MD5_HASH_LEN>& hash){
+void utils::getMd5(LPCVOID lpAddress , size_t size , std::array<uint8_t , MD5_HASH_LEN>& hash){
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
@@ -80,7 +80,7 @@ void Utils::GetMd5(LPCVOID lpAddress , size_t size , std::array<uint8_t , MD5_HA
  * @param hash Output array for the hash (20 bytes)
  */
 
-void Utils::GetSha1(LPCVOID lpAddress, const size_t size, std::array<uint8_t, SHA1_HASH_LEN>& hash) {
+void utils::getSha1(LPCVOID lpAddress, const size_t size, std::array<uint8_t, SHA1_HASH_LEN>& hash) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
@@ -101,7 +101,7 @@ void Utils::GetSha1(LPCVOID lpAddress, const size_t size, std::array<uint8_t, SH
  * @param hash Output array for the hash (32 bytes)
  */
 
-void Utils::GetSha256(LPCVOID lpAddress, const size_t size, std::array<uint8_t, SHA256_HASH_LEN>& hash) {
+void utils::getSha256(LPCVOID lpAddress, const size_t size, std::array<uint8_t, SHA256_HASH_LEN>& hash) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx) return;
     
@@ -131,7 +131,7 @@ void Utils::GetSha256(LPCVOID lpAddress, const size_t size, std::array<uint8_t, 
  *
  */
 
-void Utils::CalculateEntropy(LPCVOID lpAddress , size_t size , double* entropy){
+void utils::calculateEntropy(LPCVOID lpAddress , size_t size , double* entropy){
     
     double probability;
     std::unordered_map<unsigned char , size_t> frequency;
@@ -149,7 +149,7 @@ void Utils::CalculateEntropy(LPCVOID lpAddress , size_t size , double* entropy){
     }
 }
 
-void Utils::ConvertTimeStamp(uint32_t TimeStamp , char* TimeStampString){
+void utils::convertTimeStamp(uint32_t TimeStamp , char* TimeStampString){
     
     struct tm time_info;
 
@@ -165,7 +165,7 @@ void Utils::ConvertTimeStamp(uint32_t TimeStamp , char* TimeStampString){
     strftime(TimeStampString, TIMESTAMP_LEN , "%Y-%m-%d %H:%M:%S" , &time_info);
 }
 
-void Utils::bytesToHexString(const uint8_t* bytes,const size_t size, uint8_t* hexOutput) {
+void utils::bytesToHexString(const uint8_t* bytes,const size_t size, uint8_t* hexOutput) {
     const uint8_t hexChars[] = "0123456789abcdef";  // Lowercase
     for (size_t i = 0; i < size; ++i) {
         hexOutput[i * 2]     = hexChars[(bytes[i] >> 4) & 0x0F];  // High nibble
@@ -174,23 +174,23 @@ void Utils::bytesToHexString(const uint8_t* bytes,const size_t size, uint8_t* he
     hexOutput[size * 2] = '\0';  // Null-terminate
 }
 
-DWORD Utils::RvaToFileOffset(DWORD dwRva ,const InfoSection* infoSections , size_t sectionCount){
+DWORD utils::rvaToFileOffset(DWORD dwRva ,const InfoSection* infoSections , size_t sectionCount){
     for (size_t nsection = 0 ;  nsection < sectionCount ; nsection++ ,infoSections++){
-        DWORD vAddr = infoSections->sectionHeader.VirtualAddress;
-        DWORD vSize = infoSections->sectionHeader.Misc.VirtualSize;
+        DWORD vAddr = infoSections->m_sectionHeader.VirtualAddress;
+        DWORD vSize = infoSections->m_sectionHeader.Misc.VirtualSize;
         if (dwRva >=  vAddr && dwRva < vSize + vAddr)
-            return (dwRva - vAddr) + infoSections->sectionHeader.PointerToRawData;
+            return (dwRva - vAddr) + infoSections->m_sectionHeader.PointerToRawData;
     }
 
     throw std::runtime_error("RVA can't be converted to file offset");
 }
 
-DWORD Utils::SafeRvaToFileOffset(DWORD dwRva ,const InfoSection* infoSections , size_t sectionCount ,
- const char *CallerFunction){
+DWORD utils::safeRvaToFileOffset(DWORD dwRva ,const InfoSection* infoSections , size_t sectionCount ,
+ const char *callerFunction){
     try{
-        return Utils::RvaToFileOffset(dwRva , infoSections , sectionCount);
+        return utils::rvaToFileOffset(dwRva , infoSections , sectionCount);
     }catch(std::runtime_error& e){
-        std::cerr << "[!] ERROR: At function " << CallerFunction<<  " : " << e.what() << '\n';
+        std::cerr << "[!] ERROR: At function " << callerFunction<<  " : " << e.what() << '\n';
         std::cerr << "[*] Exiting ..."<< '\n';
         std::exit(EXIT_FAILURE);
     }

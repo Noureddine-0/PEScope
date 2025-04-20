@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
 	}
 
 	PEFile pe{argv[1]};
-	pe.Parse();
+	pe.parse();
 
 	return 0;
 }

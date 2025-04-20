@@ -43,7 +43,7 @@
 #define CHECK_OFFSET(X, Y) \
     do { \
         if ((X) > (Y)) { \
-            Utils::FatalError("Invalid Offset encountered while parsing"); \
+            utils::fatalError("Invalid Offset encountered while parsing"); \
         } \
     } while (0)
 

@@ -20,7 +20,7 @@ configure_file(
 add_executable(PEScope
 			 src/main.cpp
 			 src/pe_parser.cpp
-			 src/Utils.cpp)
+			 src/utils.cpp)
 
 
 
@@ -45,7 +45,7 @@ message(STATUS "Release Flags : ${CMAKE_CXX_FLAGS_RELEASE}")
 message(STATUS "Debug flags : ${CMAKE_CXX_FLAGS_DEBUG}")
 
 
-include_directories(Headers)
+include_directories(headers)
 
 # OpenSSL
 set(OPENSSL_BUILD_VERSION "3.1.5" CACHE STRING "OpenSSL version to build")

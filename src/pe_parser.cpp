@@ -1,4 +1,4 @@
-#include <Utils.h>
+#include <utils.h>
 #include <header.h>
 #include <pe_parser.h>
 #include <pe_structs.h>
@@ -14,43 +14,41 @@
  * CreateFileMapping, and MapViewOfFile. On Unix-like systems, it uses open, fstat, 
  * and mmap.
  * 
- * Errors encountered during the file loading process are handled through the Utils 
- * error reporting system. If the file is too small or mapping fails, a fatal error 
- * is triggered.
+ * If the file is too small or mapping fails, a fatal error is triggered.
  * 
  * @param filePath Path to the PE file on disk.
  */
 
 
-void PEFile::LoadFromFile(const char *filePath) {
+void PEFile::loadFromFile(const char *filePath) {
 #ifdef _WIN32
-    hFile  =  CreateFileA(filePath, GENERIC_READ , FILE_SHARE_READ|FILE_SHARE_WRITE , nullptr , OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL , nullptr);
-    if (hFile == INVALID_HANDLE_VALUE) {
+    m_hFile  =  CreateFileA(filePath, GENERIC_READ , FILE_SHARE_READ|FILE_SHARE_WRITE , nullptr , OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL , nullptr);
+    if (m_hFile == INVALID_HANDLE_VALUE) {
         const DWORD err = GetLastError();
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to open the file ");
+        utils::systemError(static_cast<int>(err), "[!] Failed to open the file ");
     }
 
     LARGE_INTEGER li;
-    if (!GetFileSizeEx(hFile, &li)) {
+    if (!GetFileSizeEx(m_hFile, &li)) {
         const DWORD err = GetLastError();
-        CloseHandle(hFile);
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to get file size ");
+        CloseHandle(m_hFile);
+        utils::systemError(static_cast<int>(err), "[!] Failed to get file size ");
     }
 
-    size = li.QuadPart;
-    if (size < IMAGE_DOS_HEADER_SIZE) Utils::FatalError("[!] File is too small ");
-    hMapFile = CreateFileMappingA(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
-    if (hMapFile == nullptr) {
+    m_size = li.QuadPart;
+    if (m_size < IMAGE_DOS_HEADER_SIZE) utils::fatalError("[!] File is too small ");
+    m_hMapFile = CreateFileMappingA(m_hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+    if (m_hMapFile == nullptr) {
         const DWORD err = GetLastError();
-        CloseHandle(hFile);
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to create the file mapping ");
+        CloseHandle(m_hFile);
+        utils::systemError(static_cast<int>(err), "[!] Failed to create the file mapping ");
     }
-    lpAddress = MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, size);
-    if (lpAddress == nullptr) {
+    m_lpAddress = MapViewOfFile(m_hMapFile, FILE_MAP_READ, 0, 0, m_size);
+    if (m_lpAddress == nullptr) {
         const DWORD err = GetLastError();
-        CloseHandle(hMapFile);
-        CloseHandle(hFile);
-        Utils::SystemError(static_cast<int>(err), "[!] Failed to map view of the file ");
+        CloseHandle(m_hMapFile);
+        CloseHandle(m_hFile);
+        utils::systemError(static_cast<int>(err), "[!] Failed to map view of the file ");
     }
 
     #ifdef DEBUG 
@@ -58,20 +56,20 @@ void PEFile::LoadFromFile(const char *filePath) {
     #endif
 
 #else
-    fd  =  open(filePath , O_RDONLY);
-    if (fd == -1) Utils::SystemError(errno , "[!] Failed to open the file ");
+    m_fd  =  open(filePath , O_RDONLY);
+    if (m_fd == -1) utils::systemError(errno , "[!] Failed to open the file ");
     struct stat sb;
-    if (fstat(fd , &sb) == -1) {
-        close(fd);
-        Utils::SystemError(errno , "[!] Failed to stat the file ");
+    if (fstat(m_fd , &sb) == -1) {
+        close(m_fd);
+        utils::systemError(errno , "[!] Failed to stat the file ");
     }
-    size = sb.st_size;
-    if (size < IMAGE_DOS_HEADER_SIZE) Utils::FatalError("File is too small ");
-    lpAddress  =  mmap(nullptr , size , PROT_READ , MAP_PRIVATE , fd , 0);
-    close(fd);
-    fd = -1;
-    if (lpAddress == MAP_FAILED) {
-        Utils::SystemError(errno , "[!] Failed to map the file ");
+    m_size = sb.st_size;
+    if (m_size < IMAGE_DOS_HEADER_SIZE) utils::fatalError("File is too small ");
+    m_lpAddress  =  mmap(nullptr , m_size , PROT_READ , MAP_PRIVATE , m_fd , 0);
+    close(m_fd);
+    m_fd = -1;
+    if (m_lpAddress == MAP_FAILED) {
+        utils::systemError(errno , "[!] Failed to map the file ");
     }
 
     #ifdef DEBUG 
@@ -85,7 +83,7 @@ void PEFile::LoadFromFile(const char *filePath) {
 
 
 PEFile::PEFile(const char *filePath){
-    PEFile::LoadFromFile(filePath);
+    PEFile::loadFromFile(filePath);
 }
 
 /**
@@ -98,11 +96,11 @@ PEFile::PEFile(const char *filePath){
 
 PEFile::~PEFile(){
     #ifdef _WIN32
-        UnmapViewOfFile(lpAddress);
-        CloseHandle(hMapFile);
-        CloseHandle(hFile);
+        UnmapViewOfFile(m_lpAddress);
+        CloseHandle(m_hMapFile);
+        CloseHandle(m_hFile);
     #else
-        munmap(lpAddress , size);
+        munmap(m_lpAddress , m_size);
     #endif
 }
 
@@ -114,11 +112,11 @@ PEFile::~PEFile(){
  * if it conforms to the PE format. It begins by interpreting the start of the mapped
  * memory as an IMAGE_DOS_HEADER and checks for the 'MZ' DOS signature (`0x5A4D`).
  * 
- * If the DOS header is valid, it retrieves the `e_lfanew` field — the offset to the
+ * If the DOS header is valid, it retrieves the `m_elfanew` field — the offset to the
  * NT header — and stores it internally for later access. Then, it ensures the offset
  * is within valid bounds to avoid accessing memory outside the mapped file.
  * 
- * It finally checks whether the DWORD located at `e_lfanew` corresponds to the NT
+ * It finally checks whether the DWORD located at `m_elfanew` corresponds to the NT
  * signature (`PE\0\0`, or `0x00004550`).
  * 
  * @note Some PE files, especially highly packed, crafted, or legacy ones, merge
@@ -134,13 +132,13 @@ PEFile::~PEFile(){
  * @return true if the file has a valid DOS and NT signature and offset; false otherwise.
  */
 
-bool PEFile::IsValidPE() {
-    const auto DosHeader=  static_cast<IMAGE_DOS_HEADER*>(lpAddress);
-    if (DosHeader->e_magic != IMAGE_DOS_SIGNATURE) return false;
-    const DWORD PeOffset = DosHeader->e_lfanew;
-    this->e_lfanew = PeOffset;
-    CHECK_OFFSET(PeOffset + IMAGE_FILE_HEADER_SIZE + IMAGE_NT_SIGNATURE_SIZE + 4, size);
-    return *(reinterpret_cast<DWORD*>(reinterpret_cast<ULONGLONG>(lpAddress)+PeOffset)) == IMAGE_NT_SIGNATURE;
+bool PEFile::isValidPe() {
+    const auto dosHeader =  static_cast<IMAGE_DOS_HEADER*>(m_lpAddress);
+    if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE) return false;
+    const DWORD PeOffset = dosHeader->e_lfanew;
+    this->m_elfanew = PeOffset;
+    CHECK_OFFSET(PeOffset + IMAGE_FILE_HEADER_SIZE + IMAGE_NT_SIGNATURE_SIZE + 4, m_size);
+    return *(reinterpret_cast<DWORD*>(reinterpret_cast<ULONGLONG>(m_lpAddress)+PeOffset)) == IMAGE_NT_SIGNATURE;
 }
 
 /**
@@ -148,14 +146,14 @@ bool PEFile::IsValidPE() {
  * 
  * Parses the IMAGE_FILE_HEADER to inspect the `Characteristics` field and 
  * stores a short string label ("EXE", "DLL", "SYS", or "UNK") in the internal 
- * `PeInfo` structure based on the file's purpose.
+ * `m_peInfo` structure based on the file's purpose.
  */
 
-void PEFile::GetCharacteristics(){
-    const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
-    const auto   fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
-        reinterpret_cast<ULONGLONG>(lpAddress) + headerOffset);
-    auto& characteristics = this->PeInfo.Characteristics;
+void PEFile::getCharacteristics(){
+    const size_t headerOffset = m_elfanew + IMAGE_NT_SIGNATURE_SIZE;
+    const auto fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
+        reinterpret_cast<ULONGLONG>(m_lpAddress) + headerOffset);
+    auto& characteristics = this->m_peInfo.m_characteristics;
     uint8_t* ptr = characteristics.data();
     if (fileHeader->Characteristics & IMAGE_FILE_EXECUTABLE_IMAGE){
         strncpy(reinterpret_cast<char *>(ptr) , "EXE" , 4);
@@ -180,15 +178,15 @@ void PEFile::GetCharacteristics(){
  * 
  * Parses the `Machine` field in the IMAGE_FILE_HEADER to identify the processor 
  * architecture (e.g., x86, x64, ARM, Itanium, etc.). Stores the result as a short 
- * descriptive string in the internal `PeInfo.Machine` buffer.
+ * descriptive string in the internal `m_peInfo.Machine` buffer.
  */
 
 
-void PEFile::GetMachine(){
-    const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
+void PEFile::getMachine(){
+    const size_t headerOffset = m_elfanew + IMAGE_NT_SIGNATURE_SIZE;
     const auto fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
-        reinterpret_cast<ULONGLONG>(lpAddress) + headerOffset);
-    auto& architecture = this->PeInfo.Machine;
+        reinterpret_cast<ULONGLONG>(m_lpAddress) + headerOffset);
+    auto& architecture = this->m_peInfo.m_machine;
     uint8_t* ptr  =  architecture.data();
     switch (fileHeader->Machine) {
         case IMAGE_FILE_MACHINE_I386:      strncpy(reinterpret_cast<char *>(ptr) ,"I386 (x86)" , 16); break;
@@ -217,23 +215,23 @@ void PEFile::GetMachine(){
  * Identifies whether the PE file is 32-bit or 64-bit.
  * 
  * Reads the `Magic` field from the Optional Header to determine the architecture 
- * type (`0x10B` for PE32 or `0x20B` for PE32+). Stores the result in `PeInfo.Is32Magic`.
+ * type (`0x10B` for PE32 or `0x20B` for PE32+). Stores the result in `m_peInfo.Is32Magic`.
  * Triggers a fatal error if the magic value is invalid.
  */
 
-void PEFile::GetMagic(){
-    const size_t magicOffset  =  e_lfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
+void PEFile::getMagic(){
+    const size_t magicOffset  =  m_elfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
     auto magic  =  *reinterpret_cast<WORD*>(
-        reinterpret_cast<ULONGLONG>(lpAddress) + magicOffset);
+        reinterpret_cast<ULONGLONG>(m_lpAddress) + magicOffset);
     switch (magic) {
         case IMAGE_NT_OPTIONAL_HDR32_MAGIC:  // 0x10B
-            this->PeInfo.Is32Magic = true;
+            this->m_peInfo.m_is32Magic = true;
             break;
         case IMAGE_NT_OPTIONAL_HDR64_MAGIC:  // 0x20B
-            this->PeInfo.Is32Magic = false;
+            this->m_peInfo.m_is32Magic = false;
             break;
         default:
-            Utils::FatalError("Invalid PE architecture (unknown Magic value)");
+            utils::fatalError("Invalid PE architecture (unknown Magic value)");
     }
 }
 
@@ -241,39 +239,39 @@ void PEFile::GetMagic(){
  * Computes and stores cryptographic hashes of the entire PE file.
  * 
  * Generates MD5, SHA-1, and SHA-256 hashes of the mapped file content and stores 
- * them in the corresponding fields of the `PeInfo` structure for identification, 
+ * them in the corresponding fields of the `m_peInfo` structure for identification, 
  * integrity checking, or malware signature matching. Support for ssdeep (fuzzy 
  * hashing) will be added later for improved similarity-based file matching.
  */
 
 
-void PEFile::GetFileHashes(){
+void PEFile::getFileHashes(){
     std::array<uint8_t , MD5_HASH_LEN> md5;
     std::array<uint8_t , SHA1_HASH_LEN> sha1;
     std::array<uint8_t , SHA256_HASH_LEN> sha256;
 
-    Utils::GetMd5(lpAddress , size , md5);
-    Utils::GetSha1(lpAddress , size , sha1);
-    Utils::GetSha256(lpAddress , size , sha256);
+    utils::getMd5(m_lpAddress , m_size , md5);
+    utils::getSha1(m_lpAddress , m_size , sha1);
+    utils::getSha256(m_lpAddress , m_size , sha256);
 
-    Utils::bytesToHexString(md5.data() , MD5_HASH_LEN , PeInfo.Md5.data());
-    Utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , PeInfo.Sha1.data());
-    Utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , PeInfo.Sha256.data());
+    utils::bytesToHexString(md5.data() , MD5_HASH_LEN , m_peInfo.m_md5.data());
+    utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , m_peInfo.m_sha1.data());
+    utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , m_peInfo.m_sha256.data());
 
 }
 
-void PEFile::GetTimeDateStamp(){
-    const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
+void PEFile::getTimeDateStamp(){
+    const size_t headerOffset = m_elfanew + IMAGE_NT_SIGNATURE_SIZE;
     const auto   fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
-        reinterpret_cast<ULONGLONG>(lpAddress) + headerOffset);
-    Utils::ConvertTimeStamp(fileHeader->TimeDateStamp , PeInfo.TimeStampString);
+        reinterpret_cast<ULONGLONG>(m_lpAddress) + headerOffset);
+    utils::convertTimeStamp(fileHeader->TimeDateStamp , m_peInfo.m_timeStampString);
 }
 
 /**
  * Parses and stores section headers from a Portable Executable (PE) file.
  *
- * This function extracts the section headers from the PE file mapped at `lpAddress`
- * and stores them in the internal `PeInfo` structure. It supports both PE32 and PE32+ formats
+ * This function extracts the section headers from the PE file mapped at `m_lpAddress`
+ * and stores them in the internal `m_peInfo` structure. It supports both PE32 and PE32+ formats
  * by interpreting the correct optional header and determining the number of data directories.
  * 
  * The function dynamically allocates memory for section metadata if the number of sections
@@ -285,7 +283,7 @@ void PEFile::GetTimeDateStamp(){
  * - Validates memory bounds to prevent out-of-bounds access using `CHECK_OFFSET`.
  * - Calculates the address of the section header table.
  * - If the section count exceeds `INITIAL_SECTION_NUMBER`, it dynamically allocates space
- *   using `new InfoSection[]`, capped at `PeInfo.MaxSectionNumber` for safety.
+ *   using `new InfoSection[]`, capped at `m_peInfo.MaxSectionNumber` for safety.
  * - Copies each `IMAGE_SECTION_HEADER` into `InfoSection` entries.
  *
  * @warning
@@ -296,14 +294,13 @@ void PEFile::GetTimeDateStamp(){
  * @note
  * - The entropy or other metadata for each section is not calculated here — this is purely
  *   structural extraction.
- * - The original pointer `lpAddress` must point to a fully loaded or memory-mapped PE file,
- *   and the total file size (`size`) must be known beforehand.
+ * - The original pointer `m_lpAddress` must point to a fully loaded or memory-mapped PE file,
+ *   and the total file size (`m_size`) must be known beforehand.
  *
- * @see PEFile::ParseOptionalHeader(), Utils::CalculateEntropy()
  */
 
 
-void PEFile::GetSections(){
+void PEFile::getSections(){
 
     union OptionalHeaderPtr {
         IMAGE_OPTIONAL_HEADER32* h32;
@@ -316,45 +313,46 @@ void PEFile::GetSections(){
     OptionalHeaderPtr optHeader = {};
     IMAGE_SECTION_HEADER* startSectionHeader =  nullptr;
 
-    const DWORD optionalHeaderOffset =  e_lfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
-    if(PeInfo.Is32Magic){
-        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE , size);
+    const DWORD optionalHeaderOffset =  m_elfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
+    if(m_peInfo.m_is32Magic){
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE , m_size);
         optHeader.h32 = reinterpret_cast<IMAGE_OPTIONAL_HEADER32*>(
-            reinterpret_cast<ULONGLONG>(lpAddress) + optionalHeaderOffset);
+            reinterpret_cast<ULONGLONG>(m_lpAddress) + optionalHeaderOffset);
 
     }else{
-        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE , size);
+        CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE , m_size);
         optHeader.h64 = reinterpret_cast<IMAGE_OPTIONAL_HEADER64*>(
-            reinterpret_cast<ULONGLONG>(lpAddress) + optionalHeaderOffset);
+            reinterpret_cast<ULONGLONG>(m_lpAddress) + optionalHeaderOffset);
     }
 
-    const size_t headerOffset = e_lfanew + IMAGE_NT_SIGNATURE_SIZE;
+    const size_t headerOffset = m_elfanew + IMAGE_NT_SIGNATURE_SIZE;
     const auto   fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
-        reinterpret_cast<ULONGLONG>(lpAddress) + headerOffset);
+        reinterpret_cast<ULONGLONG>(m_lpAddress) + headerOffset);
 
 
-    PeInfo.SectionNumber = fileHeader->NumberOfSections;
-    if (PeInfo.SectionNumber > INITIAL_SECTION_NUMBER){
-        if (PeInfo.SectionNumber > PeInfo.MaxSectionNumber)
-            std::cout << "[?] WARNING : PE file has a high NumberOfSections " << PeInfo.SectionNumber
-            << " , for memory safety the maximim NumberOfSections is 20 but u can change it with -nsections argument" << '\n';
-        PeInfo.SectionNumber = std::min(PeInfo.SectionNumber , PeInfo.MaxSectionNumber); 
-        PeInfo.ExceededStackSections = true;
+    m_peInfo.m_sectionNumber = fileHeader->NumberOfSections;
+    if (m_peInfo.m_sectionNumber > INITIAL_SECTION_NUMBER){
+        if (m_peInfo.m_sectionNumber > m_peInfo.m_maxSectionNumber)
+            std::cout << "[?] WARNING : PE file has a high NumberOfSections " << m_peInfo.m_maxSectionNumber
+            << " , for memory safety the maximim NumberOfSections is "<< m_peInfo.m_maxSectionNumber
+            <<" but u can change it with -nsections argument" << '\n';
+        m_peInfo.m_sectionNumber = std::min(m_peInfo.m_sectionNumber , m_peInfo.m_maxSectionNumber); 
+        m_peInfo.m_exceededStackSections = true;
         try{
-            PeInfo.ptr =  new InfoSection[PeInfo.SectionNumber];
+            m_peInfo.m_ptr =  new InfoSection[m_peInfo.m_sectionNumber];
         }catch(std::bad_alloc&){
             std::cerr << "[!] ERROR: Failed to allocate memory for sections\n";
             return;
         }
 
     }else{
-        PeInfo.ptr = PeInfo.Sections;
+        m_peInfo.m_ptr = m_peInfo.m_sections;
 
     }
 
-    infoSection = PeInfo.ptr;
+    infoSection = m_peInfo.m_ptr;
 
-    if (PeInfo.Is32Magic) {
+    if (m_peInfo.m_is32Magic) {
 
         if ((optHeader.h32)->NumberOfRvaAndSizes < 16){
             std::cout << "[?] NOTE : Non-standard NumberOfRvaAndSizes (" << optHeader.h32->NumberOfRvaAndSizes
@@ -363,10 +361,10 @@ void PEFile::GetSections(){
 
         dirNumber = std::min((optHeader.h32)->NumberOfRvaAndSizes ,  static_cast<DWORD>(IMAGE_NUMBEROF_DIRECTORY_ENTRIES));
         CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE + 
-            (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (PeInfo.SectionNumber)) , size);
-        lpDataDirectory = reinterpret_cast<LPVOID>(reinterpret_cast<ULONGLONG>(lpAddress) +
+            (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (m_peInfo.m_sectionNumber)) , m_size);
+        m_lpDataDirectory = reinterpret_cast<LPVOID>(reinterpret_cast<ULONGLONG>(m_lpAddress) +
             optionalHeaderOffset + IMAGE_OPTIONAL_HEADER32_MINSIZE);
-        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpDataDirectory) +
+        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(m_lpDataDirectory) +
             IMAGE_DATA_DIRECTORY_SIZE * dirNumber);
     }else{
 
@@ -377,17 +375,17 @@ void PEFile::GetSections(){
 
         dirNumber =  std::min(((optHeader.h64)->NumberOfRvaAndSizes) ,  static_cast<DWORD>(IMAGE_NUMBEROF_DIRECTORY_ENTRIES));
         CHECK_OFFSET(optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE + 
-            (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (PeInfo.SectionNumber)), size);
-        lpDataDirectory = reinterpret_cast<LPVOID>(reinterpret_cast<ULONGLONG>(lpAddress) + 
+            (IMAGE_DATA_DIRECTORY_SIZE * dirNumber) + (IMAGE_SECTION_HEADER_SIZE * (m_peInfo.m_sectionNumber)), m_size);
+        m_lpDataDirectory = reinterpret_cast<LPVOID>(reinterpret_cast<ULONGLONG>(m_lpAddress) + 
             optionalHeaderOffset + IMAGE_OPTIONAL_HEADER64_MINSIZE);
-        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(lpDataDirectory) +
+        startSectionHeader =  reinterpret_cast<IMAGE_SECTION_HEADER*>(reinterpret_cast<ULONGLONG>(m_lpDataDirectory) +
             IMAGE_DATA_DIRECTORY_SIZE*dirNumber);
     
     }
 
 
-    for (size_t section = 0  ; section < PeInfo.SectionNumber ; section++ ){
-        memcpy(reinterpret_cast<void *>(&(infoSection->sectionHeader)) ,
+    for (size_t section = 0  ; section < m_peInfo.m_sectionNumber ; section++ ){
+        memcpy(reinterpret_cast<void *>(&(infoSection->m_sectionHeader)) ,
          startSectionHeader + section ,
          IMAGE_SECTION_HEADER_SIZE);
         infoSection++;
@@ -396,21 +394,21 @@ void PEFile::GetSections(){
 }
 
 
-void PEFile::ChangeMaxSectionNumber(DWORD Max){
-    PeInfo.MaxSectionNumber =  std::max(Max , PeInfo.MaxSectionNumber);
+void PEFile::changeMaxSectionNumber(DWORD Max){
+    m_peInfo.m_maxSectionNumber =  std::max(Max , m_peInfo.m_maxSectionNumber);
 }
 
 /**
  * @brief Computes the entropy for each section in the PE file.
  *
  * This function iterates over all parsed section headers and calculates the Shannon
- * entropy of each section's raw data using `Utils::CalculateEntropy()`. The result
+ * entropy of each section's raw data using `utils::CalculateEntropy()`. The result
  * is stored in the corresponding `InfoSection::entropy` field for each section.
  *
  * @details
  * - Before analyzing each section, it validates that the section's raw data boundaries
  *   (i.e., `PointerToRawData + SizeOfRawData`) fall within the bounds of the loaded
- *   PE image (`size`) using `CHECK_OFFSET`.
+ *   PE image (`m_size`) using `CHECK_OFFSET`.
  * - Handles both static and dynamically allocated section arrays depending on the
  *   section count and memory model used.
  * - Entropy helps identify suspicious sections that may be packed, encrypted,
@@ -418,56 +416,56 @@ void PEFile::ChangeMaxSectionNumber(DWORD Max){
  *
  * @warning
  * - Fails hard with a fatal error if a section points outside the bounds of the PE image.
- * - Assumes that `lpAddress` and `size` refer to the full loaded file in memory.
+ * - Assumes that `m_lpAddress` and `m_size` refer to the full loaded file in memory.
  *
- * @see Utils::CalculateEntropy()
- * @see PEFile::GetSections()
+ * @see utils::calculateEntropy()
+ * @see PEFile::getSections()
  */
 
-void PEFile::GetSectionsEntropy(){
-    InfoSection* ptr = PeInfo.ptr;
+void PEFile::getSectionsEntropy(){
+    InfoSection* ptr = m_peInfo.m_ptr;
 
-    for (size_t nsection = 0 ; nsection < PeInfo.SectionNumber ; nsection++,ptr++ ){
-        CHECK_OFFSET((ptr->sectionHeader).PointerToRawData + (ptr->sectionHeader).SizeOfRawData , size);
-        Utils::CalculateEntropy(reinterpret_cast<LPCVOID>(
-            (ptr->sectionHeader).PointerToRawData + 
-            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
-            &(ptr->entropy));
+    for (size_t nsection = 0 ; nsection < m_peInfo.m_sectionNumber ; nsection++,ptr++ ){
+        CHECK_OFFSET((ptr->m_sectionHeader).PointerToRawData + (ptr->m_sectionHeader).SizeOfRawData , m_size);
+        utils::calculateEntropy(reinterpret_cast<LPCVOID>(
+            (ptr->m_sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
+            &(ptr->m_entropy));
     }
 }
 
 
-void PEFile::GetSectionsHashes(){
-    InfoSection* ptr =  PeInfo.ptr;
+void PEFile::getSectionsHashes(){
+    InfoSection* ptr =  m_peInfo.m_ptr;
 
     std::array<uint8_t , MD5_HASH_LEN> md5;
     std::array<uint8_t , SHA1_HASH_LEN> sha1;
     std::array<uint8_t , SHA256_HASH_LEN> sha256;
 
-    for(size_t nsection = 0; nsection < PeInfo.SectionNumber ; nsection++ , ptr++){
-        // At this point we already check offsets in GetSectionsEntropy , so we wont do it here
-        Utils::GetMd5(reinterpret_cast<LPCVOID>(
-            (ptr->sectionHeader).PointerToRawData + 
-            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
+    for(size_t nsection = 0; nsection < m_peInfo.m_sectionNumber ; nsection++ , ptr++){
+        // At this point we already check offsets in getSectionsEntropy , so we wont do it here
+        utils::getMd5(reinterpret_cast<LPCVOID>(
+            (ptr->m_sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
             md5);
 
-        Utils::GetSha1(reinterpret_cast<LPCVOID>(
-            (ptr->sectionHeader).PointerToRawData + 
-            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
+        utils::getSha1(reinterpret_cast<LPCVOID>(
+            (ptr->m_sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
             sha1);
 
-        Utils::GetSha256(reinterpret_cast<LPCVOID>(
-            (ptr->sectionHeader).PointerToRawData + 
-            reinterpret_cast<ULONGLONG>(lpAddress)) , (ptr->sectionHeader).SizeOfRawData,
+        utils::getSha256(reinterpret_cast<LPCVOID>(
+            (ptr->m_sectionHeader).PointerToRawData + 
+            reinterpret_cast<ULONGLONG>(m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
             sha256);
 
-        Utils::bytesToHexString(md5.data() , MD5_HASH_LEN , ptr->Md5.data());
-        Utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , ptr->Sha1.data());
-        Utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->Sha256.data()); 
+        utils::bytesToHexString(md5.data() , MD5_HASH_LEN , ptr->m_md5.data());
+        utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , ptr->m_sha1.data());
+        utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->m_sha256.data()); 
     }
 }
 
-void PEFile::GetImports(){
+void PEFile::getImports(){
 
     DWORD importTableRva;
     DWORD importTableOffset ;
@@ -475,34 +473,34 @@ void PEFile::GetImports(){
     DWORD nameOffset;
 
     importTableRva= (
-        (reinterpret_cast<IMAGE_DATA_DIRECTORY*>(lpDataDirectory) + 
+        (reinterpret_cast<IMAGE_DATA_DIRECTORY*>(m_lpDataDirectory) + 
         IMAGE_DIRECTORY_ENTRY_IMPORT)->VirtualAddress);
 
 
-    importTableOffset  = Utils::SafeRvaToFileOffset(importTableRva, PeInfo.ptr , PeInfo.SectionNumber,__FUNCTION__);
+    importTableOffset  = utils::safeRvaToFileOffset(importTableRva, m_peInfo.m_ptr , m_peInfo.m_sectionNumber,__FUNCTION__);
 
-    CHECK_OFFSET(importTableOffset , size);
+    CHECK_OFFSET(importTableOffset , m_size);
     IMAGE_IMPORT_DESCRIPTOR* importTable = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(
-        reinterpret_cast<ULONGLONG>(lpAddress) + importTableOffset);
+        reinterpret_cast<ULONGLONG>(m_lpAddress) + importTableOffset);
 
     while((nameRva = importTable->Name)){
-        nameOffset = Utils::SafeRvaToFileOffset(nameRva , PeInfo.ptr , PeInfo.SectionNumber , __FUNCTION__);
+        nameOffset = utils::safeRvaToFileOffset(nameRva , m_peInfo.m_ptr , m_peInfo.m_sectionNumber , __FUNCTION__);
 
-        CHECK_OFFSET(nameOffset , size);
-        std::cout << (char*)(lpAddress) + nameOffset << '\n'; 
+        CHECK_OFFSET(nameOffset , m_size);
+        std::cout << (char*)(m_lpAddress) + nameOffset << '\n'; 
         importTable++;  
     }
 }
 
-void PEFile::Parse(){
-    (IsValidPE()) ? (void)(std::cout << "[*] Initial validation passed ...\n") : std::exit(EXIT_FAILURE);
-    GetMachine();
-    GetCharacteristics();
-    GetMagic();
-    GetFileHashes();
-    GetTimeDateStamp();
-    GetSections();
-    GetSectionsEntropy();
-    GetSectionsHashes();
-    GetImports();
+void PEFile::parse(){
+    (isValidPe()) ? (void)(std::cout << "[*] Initial validation passed ...\n") : std::exit(EXIT_FAILURE);
+    getMachine();
+    getCharacteristics();
+    getMagic();
+    getFileHashes();
+    getTimeDateStamp();
+    getSections();
+    getSectionsEntropy();
+    getSectionsHashes();
+    getImports();
 }
