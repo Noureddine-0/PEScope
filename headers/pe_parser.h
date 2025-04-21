@@ -5,6 +5,11 @@
 
 constexpr int  INITIAL_SECTION_NUMBER = 10 ;
 
+struct Import{
+    char *m_dllName;
+    std::vector<char*> m_apisVector;
+};
+
 struct InfoSection{
 
     double m_entropy{};
@@ -26,17 +31,26 @@ struct PEInfo{
         if (m_exceededStackSections){
             delete[] m_ptr;
         }
-    }
-    char m_timeStampString[80];
-    DWORD m_sectionNumber = 10;
-    DWORD m_maxSectionNumber = 20; 
 
+        for (auto& import: m_allImports){
+            delete import;
+        }
+    }
+    
     InfoSection m_sections[INITIAL_SECTION_NUMBER];
     InfoSection *m_ptr = nullptr;
 
+    std::vector<Import*> m_allImports{};
+
+    DWORD m_sectionNumber = 10;
+    DWORD m_maxSectionNumber = 20;
+
+
+    char m_timeStampString[80];
 
     std::array<uint8_t , 16> m_machine{};
     std::array<uint8_t ,  4> m_characteristics{};
+    std::array<uint8_t , 24> m_subsystem{};
 
     std::array<uint8_t , 2 * MD5_HASH_LEN + 1> m_md5{};
     std::array<uint8_t , 2 * SHA1_HASH_LEN + 1> m_sha1{};
@@ -63,6 +77,7 @@ private:
     bool isValidPe()  ;
     void getMachine() ;
     void getCharacteristics();
+    void getSubsystem() ;
     void getMagic();
     void getFileHashes();
     void getTimeDateStamp();
@@ -85,7 +100,6 @@ private:
     LPVOID m_lpAddress = nullptr;
     LPVOID m_lpDataDirectory =  nullptr;
     size_t m_size = 0;
-    double m_entropy{};
     
     DWORD m_elfanew{};
 };

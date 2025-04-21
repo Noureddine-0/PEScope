@@ -137,6 +137,7 @@ bool PEFile::isValidPe() {
     if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE) return false;
     const DWORD PeOffset = dosHeader->e_lfanew;
     this->m_elfanew = PeOffset;
+    //The added 4 for magic , major and minor in optional header
     CHECK_OFFSET(PeOffset + IMAGE_FILE_HEADER_SIZE + IMAGE_NT_SIGNATURE_SIZE + 4, m_size);
     return *(reinterpret_cast<DWORD*>(reinterpret_cast<ULONGLONG>(m_lpAddress)+PeOffset)) == IMAGE_NT_SIGNATURE;
 }
@@ -155,24 +156,65 @@ void PEFile::getCharacteristics(){
         reinterpret_cast<ULONGLONG>(m_lpAddress) + headerOffset);
     auto& characteristics = this->m_peInfo.m_characteristics;
     uint8_t* ptr = characteristics.data();
-    if (fileHeader->Characteristics & IMAGE_FILE_EXECUTABLE_IMAGE){
-        strncpy(reinterpret_cast<char *>(ptr) , "EXE" , 4);
+    if (fileHeader->Characteristics & IMAGE_FILE_SYSTEM){
+        strncpy(reinterpret_cast<char *>(ptr) , "SYS" , 4);
         return;
     }
     else if (fileHeader->Characteristics & IMAGE_FILE_DLL) {
         strncpy(reinterpret_cast<char *>(ptr) , "DLL" , 4);
         return;
     }
-    else if (fileHeader->Characteristics & IMAGE_FILE_SYSTEM) {
-        strncpy(reinterpret_cast<char *>(ptr) , "SYS" , 4);
+    else if (fileHeader->Characteristics & IMAGE_FILE_EXECUTABLE_IMAGE) {
+        strncpy(reinterpret_cast<char *>(ptr) , "EXE" , 4);
+        getSubsystem();
         return;
     }
 
     strncpy(reinterpret_cast<char *>(ptr) , "UNK" , 4);
-
 }
 
 
+void PEFile::getSubsystem(){
+
+    union OptionalHeaderPtr {
+        IMAGE_OPTIONAL_HEADER32* h32;
+        IMAGE_OPTIONAL_HEADER64* h64;
+    };
+
+    WORD subsystem;
+    uint8_t *ptr = m_peInfo.m_subsystem.data();
+    OptionalHeaderPtr optHeader = {};
+
+    const DWORD optionalHeaderOffset =  m_elfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
+
+    if(m_peInfo.m_is32Magic){
+        optHeader.h32 = reinterpret_cast<IMAGE_OPTIONAL_HEADER32*>(
+            reinterpret_cast<ULONGLONG>(m_lpAddress) + optionalHeaderOffset);
+        subsystem = optHeader.h32->Subsystem;
+    }else{
+        optHeader.h64 = reinterpret_cast<IMAGE_OPTIONAL_HEADER64*>(
+            reinterpret_cast<ULONGLONG>(m_lpAddress) + optionalHeaderOffset);
+        subsystem = optHeader.h32->Subsystem;        
+    }
+    switch(subsystem){
+        case IMAGE_SUBSYSTEM_UNKNOWN :                  strncpy(reinterpret_cast<char *>(ptr) , "Unkown" , 24); break;
+        case IMAGE_SUBSYSTEM_NATIVE:                    strncpy(reinterpret_cast<char *>(ptr) , "Native" , 24); break;
+        case IMAGE_SUBSYSTEM_WINDOWS_GUI:               strncpy(reinterpret_cast<char *>(ptr) , "Windows GUI" , 24); break;
+        case IMAGE_SUBSYSTEM_WINDOWS_CUI:               strncpy(reinterpret_cast<char *>(ptr) , "Windows CUI" , 24); break;
+        case IMAGE_SUBSYSTEM_OS2_CUI:                   strncpy(reinterpret_cast<char *>(ptr) , "OS/2 CUI" , 24); break;
+        case IMAGE_SUBSYSTEM_POSIX_CUI:                 strncpy(reinterpret_cast<char *>(ptr) , "POSIX CUI" , 24); break;
+        case IMAGE_SUBSYSTEM_NATIVE_WINDOWS:            strncpy(reinterpret_cast<char *>(ptr) , "Native Win9x" , 24); break;
+        case IMAGE_SUBSYSTEM_WINDOWS_CE_GUI:            strncpy(reinterpret_cast<char *>(ptr) , "Windows CE GUI",24); break;
+        case IMAGE_SUBSYSTEM_EFI_APPLICATION:           strncpy(reinterpret_cast<char *>(ptr) , "EFI Application",24); break;
+        case IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER:   strncpy(reinterpret_cast<char *>(ptr) , "EFI BOOT Driver" , 24); break;
+        case IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER:        strncpy(reinterpret_cast<char *>(ptr) , "EFI Runtime Driver" , 24); break;
+        case IMAGE_SUBSYSTEM_EFI_ROM:                   strncpy(reinterpret_cast<char *>(ptr) , "EFI ROM" , 24); break;
+        case IMAGE_SUBSYSTEM_XBOX:                      strncpy(reinterpret_cast<char *>(ptr) , "Xbox" , 24); break;
+        case IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION:  strncpy(reinterpret_cast<char *>(ptr) , "Windows BOOT App" , 24); break;
+        case IMAGE_SUBSYSTEM_XBOX_CODE_CATALOG:         strncpy(reinterpret_cast<char *>(ptr) , "Xbox Code Catalog" ,24); break;
+        default:                                        strncpy(reinterpret_cast<char *>(ptr) , "undefined" , 24); break;
+    }
+}
 /**
  * Determines the target architecture of the PE file.
  * 
@@ -183,11 +225,12 @@ void PEFile::getCharacteristics(){
 
 
 void PEFile::getMachine(){
+    //Check that we can read at headerOffset is made in isValidPe
     const size_t headerOffset = m_elfanew + IMAGE_NT_SIGNATURE_SIZE;
     const auto fileHeader = reinterpret_cast<IMAGE_FILE_HEADER*>(
         reinterpret_cast<ULONGLONG>(m_lpAddress) + headerOffset);
-    auto& architecture = this->m_peInfo.m_machine;
-    uint8_t* ptr  =  architecture.data();
+    auto& machine = m_peInfo.m_machine;
+    uint8_t* ptr  =  machine.data();
     switch (fileHeader->Machine) {
         case IMAGE_FILE_MACHINE_I386:      strncpy(reinterpret_cast<char *>(ptr) ,"I386 (x86)" , 16); break;
         case IMAGE_FILE_MACHINE_AMD64:     strncpy(reinterpret_cast<char *>(ptr) ,"AMD64 (x64)", 16); break;
@@ -206,7 +249,7 @@ void PEFile::getMachine(){
         case IMAGE_FILE_MACHINE_SH4:       strncpy(reinterpret_cast<char *>(ptr) , "SH4", 16); break;;
         case IMAGE_FILE_MACHINE_THUMB:     strncpy(reinterpret_cast<char *>(ptr) , "ARM Thumb", 16); break;;
         case IMAGE_FILE_MACHINE_UNKNOWN:   strncpy(reinterpret_cast<char *>(ptr) , "Unknown", 16); break;
-        default: strncpy(reinterpret_cast<char *>(ptr) , "Error" , 16);
+        default: strncpy(reinterpret_cast<char *>(ptr) , "Undefined" , 16);
     }
 }
 
@@ -220,6 +263,7 @@ void PEFile::getMachine(){
  */
 
 void PEFile::getMagic(){
+    //Check that we can read at magic offset is made in isValidPe
     const size_t magicOffset  =  m_elfanew + IMAGE_NT_SIGNATURE_SIZE + IMAGE_FILE_HEADER_SIZE;
     auto magic  =  *reinterpret_cast<WORD*>(
         reinterpret_cast<ULONGLONG>(m_lpAddress) + magicOffset);
@@ -341,8 +385,7 @@ void PEFile::getSections(){
         try{
             m_peInfo.m_ptr =  new InfoSection[m_peInfo.m_sectionNumber];
         }catch(std::bad_alloc&){
-            std::cerr << "[!] ERROR: Failed to allocate memory for sections\n";
-            return;
+            utils::fatalError("Failed to allocate memory");
         }
 
     }else{
@@ -416,7 +459,6 @@ void PEFile::changeMaxSectionNumber(DWORD Max){
  *
  * @warning
  * - Fails hard with a fatal error if a section points outside the bounds of the PE image.
- * - Assumes that `m_lpAddress` and `m_size` refer to the full loaded file in memory.
  *
  * @see utils::calculateEntropy()
  * @see PEFile::getSections()
@@ -424,6 +466,10 @@ void PEFile::changeMaxSectionNumber(DWORD Max){
 
 void PEFile::getSectionsEntropy(){
     InfoSection* ptr = m_peInfo.m_ptr;
+    
+    if(!ptr){
+        utils::fatalError("[!] Trying to calculate sections entropy before getting sections");
+    }
 
     for (size_t nsection = 0 ; nsection < m_peInfo.m_sectionNumber ; nsection++,ptr++ ){
         CHECK_OFFSET((ptr->m_sectionHeader).PointerToRawData + (ptr->m_sectionHeader).SizeOfRawData , m_size);
@@ -437,6 +483,10 @@ void PEFile::getSectionsEntropy(){
 
 void PEFile::getSectionsHashes(){
     InfoSection* ptr =  m_peInfo.m_ptr;
+    
+    if(!ptr){
+        utils::fatalError("[!] Trying to calculate sections entropy before getting sections");
+    }
 
     std::array<uint8_t , MD5_HASH_LEN> md5;
     std::array<uint8_t , SHA1_HASH_LEN> sha1;
@@ -468,18 +518,31 @@ void PEFile::getSectionsHashes(){
 void PEFile::getImports(){
 
     DWORD importTableRva;
+    DWORD importTableSize;
     DWORD importTableOffset ;
+    DWORD apiNameOffset;
+    DWORD apiNameRva;
+    //DWORD apiNameSize;
     DWORD nameRva;
     DWORD nameOffset;
+    DWORD iltRva;
+    DWORD iltOffset;
+    Import* dllImport;
 
-    importTableRva= (
+    importTableRva = (
         (reinterpret_cast<IMAGE_DATA_DIRECTORY*>(m_lpDataDirectory) + 
         IMAGE_DIRECTORY_ENTRY_IMPORT)->VirtualAddress);
 
+    importTableSize = (
+        (reinterpret_cast<IMAGE_DATA_DIRECTORY*>(m_lpDataDirectory) + 
+        IMAGE_DIRECTORY_ENTRY_IMPORT)->Size);
 
+    if (!importTableRva || !importTableSize){
+        return;
+    }
     importTableOffset  = utils::safeRvaToFileOffset(importTableRva, m_peInfo.m_ptr , m_peInfo.m_sectionNumber,__FUNCTION__);
 
-    CHECK_OFFSET(importTableOffset , m_size);
+    CHECK_OFFSET(importTableOffset + sizeof(IMAGE_IMPORT_DESCRIPTOR), m_size);
     IMAGE_IMPORT_DESCRIPTOR* importTable = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(
         reinterpret_cast<ULONGLONG>(m_lpAddress) + importTableOffset);
 
@@ -487,19 +550,68 @@ void PEFile::getImports(){
         nameOffset = utils::safeRvaToFileOffset(nameRva , m_peInfo.m_ptr , m_peInfo.m_sectionNumber , __FUNCTION__);
 
         CHECK_OFFSET(nameOffset , m_size);
-        std::cout << (char*)(m_lpAddress) + nameOffset << '\n'; 
-        importTable++;  
+        try{
+            dllImport = new Import;
+        }catch(std::bad_alloc&){
+            utils::fatalError("Failed to allocate memory");
+        }
+        m_peInfo.m_allImports.push_back(dllImport);
+        dllImport->m_dllName = reinterpret_cast<char*>(m_lpAddress) + nameOffset;
+        iltRva = (importTable->DUMMYUNIONNAME.OriginalFirstThunk) ?
+         importTable->DUMMYUNIONNAME.OriginalFirstThunk : importTable->FirstThunk;
+        if (!iltRva) goto Next;
+        iltOffset  =  utils::safeRvaToFileOffset(iltRva , m_peInfo.m_ptr , m_peInfo.m_sectionNumber , __FUNCTION__);
+        
+        if (m_peInfo.m_is32Magic){
+            CHECK_OFFSET(iltOffset + sizeof(IMAGE_THUNK_DATA32) , m_size);
+            auto thunk = reinterpret_cast<IMAGE_THUNK_DATA32*>(
+                reinterpret_cast<ULONGLONG>(m_lpAddress) + iltOffset);
+            while(thunk->u1.AddressOfData){
+                if (!(thunk->u1.Ordinal & ORDINAL_32_FLAG)){
+                    apiNameRva = thunk->u1.AddressOfData;
+                    apiNameOffset = utils::safeRvaToFileOffset(apiNameRva , m_peInfo.m_ptr , m_peInfo.m_sectionNumber , __FUNCTION__);
+                    CHECK_OFFSET(apiNameOffset + sizeof(WORD), m_size);
+                    IMAGE_IMPORT_BY_NAME* importByName = (IMAGE_IMPORT_BY_NAME*)((BYTE*)m_lpAddress + apiNameOffset);
+                    char* apiName = (char*)importByName->Name;
+                    dllImport->m_apisVector.push_back(apiName);
+                    thunk++;
+                }
+            }        
+        }else{
+            CHECK_OFFSET(iltOffset + sizeof(IMAGE_THUNK_DATA64) , m_size);
+            auto thunk = reinterpret_cast<IMAGE_THUNK_DATA64*>(
+                reinterpret_cast<ULONGLONG>(m_lpAddress) + iltOffset);
+            while(thunk->u1.AddressOfData){
+                if (!(thunk->u1.Ordinal & ORDINAL_64_FLAG)){
+                    apiNameRva = thunk->u1.AddressOfData & IMPORT_BY_NAME_64_MASK;
+                    apiNameOffset = utils::safeRvaToFileOffset(apiNameRva , m_peInfo.m_ptr , m_peInfo.m_sectionNumber , __FUNCTION__);
+                    CHECK_OFFSET(apiNameOffset +sizeof(WORD) , m_size);
+                    IMAGE_IMPORT_BY_NAME* importByName = (IMAGE_IMPORT_BY_NAME*)((BYTE*)m_lpAddress + apiNameOffset);
+                    char* apiName = (char*)importByName->Name;
+                    dllImport->m_apisVector.push_back(apiName);
+                    thunk++;
+                }
+           }
+        }
+
+        Next:
+            importTable++;
     }
 }
 
+
+/*
+ * The order on which those functions are called is important.
+ * Some offset checks are only made in specific functions but needed in others
+*/
 void PEFile::parse(){
     (isValidPe()) ? (void)(std::cout << "[*] Initial validation passed ...\n") : std::exit(EXIT_FAILURE);
     getMachine();
-    getCharacteristics();
     getMagic();
-    getFileHashes();
     getTimeDateStamp();
     getSections();
+    getCharacteristics();
+    getFileHashes();
     getSectionsEntropy();
     getSectionsHashes();
     getImports();

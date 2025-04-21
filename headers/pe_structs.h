@@ -35,8 +35,22 @@ constexpr int IMAGE_DIRECTORY_ENTRY_IAT = 12;
 constexpr int IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT = 13;
 constexpr int IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR = 14;
 
-// Other constants
-
+//Subsystem Values
+constexpr int  IMAGE_SUBSYSTEM_UNKNOWN                  = 0;   // Unknown subsystem.
+constexpr int  IMAGE_SUBSYSTEM_NATIVE                   = 1;   // Image doesn't require a subsystem.
+constexpr int  IMAGE_SUBSYSTEM_WINDOWS_GUI              = 2;   // Image runs in the Windows GUI subsystem.
+constexpr int  IMAGE_SUBSYSTEM_WINDOWS_CUI              = 3;   // Image runs in the Windows character subsystem.
+constexpr int  IMAGE_SUBSYSTEM_OS2_CUI                  = 5;   // image runs in the OS/2 character subsystem.
+constexpr int  IMAGE_SUBSYSTEM_POSIX_CUI                = 7;   // image runs in the Posix character subsystem.
+constexpr int  IMAGE_SUBSYSTEM_NATIVE_WINDOWS           = 8;   // image is a native Win9x driver.
+constexpr int  IMAGE_SUBSYSTEM_WINDOWS_CE_GUI           = 9;   // Image runs in the Windows CE subsystem.
+constexpr int  IMAGE_SUBSYSTEM_EFI_APPLICATION          = 10;  //
+constexpr int  IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER  = 11;   //
+constexpr int  IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER       = 12;  //
+constexpr int  IMAGE_SUBSYSTEM_EFI_ROM                  = 13;
+constexpr int  IMAGE_SUBSYSTEM_XBOX                     = 14;
+constexpr int  IMAGE_SUBSYSTEM_WINDOWS_BOOT_APPLICATION = 16;
+constexpr int  IMAGE_SUBSYSTEM_XBOX_CODE_CATALOG        = 17;
 
 #pragma pack(push,1)
 
@@ -291,3 +305,6 @@ constexpr int IMAGE_OPTIONAL_HEADER64_MINSIZE = IMAGE_OPTIONAL_HEADER64_SIZE -  
 constexpr int IMAGE_DATA_DIRECTORY_SIZE =  sizeof(IMAGE_DATA_DIRECTORY);
 constexpr int IMAGE_SECTION_HEADER_SIZE = sizeof(IMAGE_SECTION_HEADER);
 constexpr int TIMESTAMP_LEN = 80;
+constexpr unsigned int ORDINAL_32_FLAG = 1 << 31;
+constexpr unsigned long long ORDINAL_64_FLAG = 1ULL << 63;
+constexpr unsigned int IMPORT_BY_NAME_64_MASK = 0x7FFFFFFF;

@@ -33,10 +33,11 @@
 #include <cstring>
 #include <iostream>
 #include <ctime>
+#include <memory>
+#include <openssl/evp.h>
+#include <openssl/sha.h>
 #include <system_error>
 #include <unordered_map>
-#include <openssl/sha.h>
-#include <openssl/evp.h>
 
 #include <version.h>
 

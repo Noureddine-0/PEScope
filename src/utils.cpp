@@ -42,7 +42,7 @@ void utils::systemError(int ErrorCode, const char *ErrorMessage) {
  */
 
 void utils::fatalError(const char* Error){
-    std::cerr << "[!] Fatal Error: "<< Error << '\n';
+    std::cerr << "[!] FATAL ERROR: "<< Error << '\n';
     std::cerr << "[*] Exiting ..." << '\n';
     std::exit(EXIT_FAILURE);
 }
