@@ -556,7 +556,7 @@ void PEFile::getImports(){
         }
         m_peInfo.m_allImports.push_back(dllImport);
         dllImport->m_dllName = static_cast<char*>(m_lpAddress) + nameOffset;
-#ifndef _MSC_VER
+#ifndef _WIN32
         iltRva = (importTable->DUMMYUNIONNAME.OriginalFirstThunk) ?
          importTable->DUMMYUNIONNAME.OriginalFirstThunk : importTable->FirstThunk;
 #else

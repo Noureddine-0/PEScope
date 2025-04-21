@@ -38,6 +38,7 @@
 #include <openssl/sha.h>
 #include <system_error>
 #include <unordered_map>
+#include <vector>
 
 #include <version.h>
 
