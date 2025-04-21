@@ -24,7 +24,7 @@ add_executable(PEScope
 
 
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}  -Wall -Wshadow -Wextra -DDEBUG")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wshadow -Wextra ")
 endif()

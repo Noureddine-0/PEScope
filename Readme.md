@@ -20,7 +20,8 @@ PEScope is an **early-stage** cross-platform tool for parsing and analyzing PE f
 - CMake 3.21+  
 - C++17 compiler (GCC/Clang/MSVC)  
 
-### Build Steps  
+### Build Steps
+In Linux , the project can be built as follow:
 ```bash
 git clone --recursive https://github.com/Noureddine-0/PEScope.git
 cd PEScope
@@ -28,6 +29,17 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
+In Windows , if using MinGW follow the same steps as linux build , else if using MSVC follow the following steps:
+```bash
+git clone --recursive https://github.com/Noureddine-0/PEScope.git
+cd PEScope
+mkdir build && cd build
+cmake ..
+```
+– Open The solution in Visual studio.
+– Set PEScope as the Startup project
+– Choose the build and architecture
+– Build 
 ## :page_facing_up: Note on OpenSSL Integration
 ###  ⚠️ Current OpenSSL Build Strategy
 
@@ -40,10 +52,17 @@ cmake --build .
 ## 🌐 Cross-Platform Support
 | Platform | Status              | Notes                                   |
 |----------|---------------------|-----------------------------------------|
-| Windows  | :gear:              | In progress                             |
+| Windows  | :gear:              | In progress – Testing on Windows 10     |
 | Linux    | :gear:              | In progress – Testing on Ubuntu 22.04   |
 | macOS    | :construction:      | Planned – ARM64 support coming          |
 
+The project has been successfully built and tested on:
+- Windows 10/11:
+	- Microsoft Visual Studio 2022 (MSVC 17)
+	- MinGW-w64 (GCC [11.0 w64])
+- Linux:
+	- GCC [11.4.0]
+	- Clang [14.0.0]
 ## :handshake: Contributing
 Contributions are welcome! Please:
 
