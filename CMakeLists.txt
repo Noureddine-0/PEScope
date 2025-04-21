@@ -15,7 +15,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/conf/version.h.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/Headers/version.h)
+    ${CMAKE_CURRENT_SOURCE_DIR}/headers/version.h)
 
 add_executable(PEScope
 			 src/main.cpp
