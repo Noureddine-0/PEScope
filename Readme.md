@@ -37,8 +37,11 @@ mkdir build && cd build
 cmake ..
 ```
 – Open The solution in Visual studio.
-– Set PEScope as the Startup project
-– Choose the build and architecture
+
+– Set PEScope as the Startup project.
+
+– Choose the build type and the architecture.
+
 – Build 
 ## :page_facing_up: Note on OpenSSL Integration
 ###  ⚠️ Current OpenSSL Build Strategy
