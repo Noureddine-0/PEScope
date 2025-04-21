@@ -520,7 +520,7 @@ void PEFile::getImports(){
 
     DWORD apiNameOffset;
     DWORD apiNameRva;
-    //DWORD apiNameSize;
+
     DWORD nameRva;
     DWORD nameOffset;
     DWORD iltRva;
@@ -556,8 +556,13 @@ void PEFile::getImports(){
         }
         m_peInfo.m_allImports.push_back(dllImport);
         dllImport->m_dllName = static_cast<char*>(m_lpAddress) + nameOffset;
+#ifndef _MSC_VER
         iltRva = (importTable->DUMMYUNIONNAME.OriginalFirstThunk) ?
          importTable->DUMMYUNIONNAME.OriginalFirstThunk : importTable->FirstThunk;
+#else
+        iltRva = (importTable->OriginalFirstThunk) ?
+            importTable->OriginalFirstThunk : importTable->FirstThunk;
+#endif
         if (!iltRva) goto Next;
         iltOffset  =  utils::safeRvaToFileOffset(iltRva , m_peInfo.m_ptr , m_peInfo.m_sectionNumber , __FUNCTION__);
         
