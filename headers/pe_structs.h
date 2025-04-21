@@ -308,3 +308,7 @@ constexpr int TIMESTAMP_LEN = 80;
 constexpr unsigned int ORDINAL_32_FLAG = 1 << 31;
 constexpr unsigned long long ORDINAL_64_FLAG = 1ULL << 63;
 constexpr unsigned int IMPORT_BY_NAME_64_MASK = 0x7FFFFFFF;
+
+#if defined(_WIN32) && !defined(IMAGE_SUBSYSTEM_XBOX_CODE_CATALOG) 
+    constexpr int IMAGE_SUBSYSTEM_XBOX_CODE_CATALOG = 17 ;
+#endif

@@ -73,7 +73,7 @@ struct PEFile {
 private:
 
     void loadFromFile(const char *);
-    void changeMaxSectionNumber(DWORD);
+    void changeMaxSectionNumber(const DWORD);
     bool isValidPe()  ;
     void getMachine() ;
     void getCharacteristics();
