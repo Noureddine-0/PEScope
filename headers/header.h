@@ -30,9 +30,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <cstring>
-#include <iostream>
 #include <ctime>
+#include <iostream>
 #include <memory>
 #include <openssl/evp.h>
 #include <openssl/sha.h>

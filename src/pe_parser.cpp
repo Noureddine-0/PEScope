@@ -671,7 +671,7 @@ GetNames:
  * Some offset checks are only made in specific functions but needed in others
 */
 void PEFile::parse(){
-    (isValidPe()) ? (void)(std::cout << "[*] Initial validation passed ...\n") : std::exit(EXIT_FAILURE);
+    isValidPe();
     getMachine();
     getMagic();
     getTimeDateStamp();
@@ -682,4 +682,54 @@ void PEFile::parse(){
     getSectionsHashes();
     getImports();
     getExports();
+}
+
+void PEFile::printResult(){
+    InfoSection infoSection{} ;
+    DWORD iter{};
+    char sectionName[IMAGE_SIZEOF_SHORT_NAME + 1];
+    printf("Type : %s(%s)\n",m_peInfo.m_characteristics.data(),m_peInfo.m_subsystem.data());
+    if(m_peInfo.m_is32Magic)
+        puts("Architecture : 32-bit\n");
+    else
+        puts("Architecture : 64-bit\n");
+    printf("TimeDateStamp : %s\n",m_peInfo.m_timeStampString);
+    printf("md5 : %s\n",m_peInfo.m_md5.data());
+    printf("sha1 : %s\n",m_peInfo.m_sha1.data());
+    printf("sha256 : %s\n",m_peInfo.m_sha256.data());
+    printf("Machine : %s\n\n",m_peInfo.m_machine.data());
+    puts("Sections:");
+    for (DWORD nsection = 0; nsection < m_peInfo.m_sectionNumber ; nsection++){
+        infoSection = m_peInfo.m_ptr[nsection];
+        strncpy(sectionName , (const char *)infoSection.m_sectionHeader.Name,IMAGE_SIZEOF_SHORT_NAME);
+        printf("\t%u : %s\n\t\tentropy : %.4f\n\t\tmd5 : %s\n\t\tsha1 : %s\n\t\tsha256 : %s\n\n",
+            nsection + 1,
+            sectionName,
+            infoSection.m_entropy,
+            infoSection.m_md5.data(),
+            infoSection.m_sha1.data(),
+            infoSection.m_sha256.data());
+    }
+    
+    puts("Imports:");
+    if(m_peInfo.m_allImports.empty()){
+        puts("\tNo Imports");
+    }else{
+        for (const auto& import :m_peInfo.m_allImports){
+            printf("\t%u : %s\n" , iter + 1, import->m_dllName);
+            for (const auto api : import->m_apisVector){
+                printf("\t\t%s\n",api);
+            }
+            iter++;
+        }    
+    }
+
+    puts("Exports:");
+    if (m_peInfo.m_allImports.empty()){
+        puts("\tNo Exports");
+    }else{
+        for (const auto& export_: m_peInfo.m_allExports){
+            printf("\t%s\n",export_);
+        }
+    }
 }

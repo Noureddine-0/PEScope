@@ -69,7 +69,7 @@ struct PEFile {
     ~PEFile() noexcept ;
 
     void parse();
-    
+    void printResult();
 
 private:
 
