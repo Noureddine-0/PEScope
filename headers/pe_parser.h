@@ -7,7 +7,7 @@ constexpr int  INITIAL_SECTION_NUMBER = 10 ;
 
 struct Import{
     char *m_dllName;
-    std::vector<char*> m_apisVector;
+    std::vector<char*> m_apisVector{};
 };
 
 struct InfoSection{
@@ -41,9 +41,9 @@ struct PEInfo{
     InfoSection *m_ptr = nullptr;
 
     std::vector<Import*> m_allImports{};
-
-    DWORD m_sectionNumber = 10;
-    DWORD m_maxSectionNumber = 20;
+    std::vector<char *> m_allExports{};
+    DWORD m_sectionNumber{10};
+    DWORD m_maxSectionNumber{20};
 
 
     char m_timeStampString[80];
@@ -56,9 +56,10 @@ struct PEInfo{
     std::array<uint8_t , 2 * SHA1_HASH_LEN + 1> m_sha1{};
     std::array<uint8_t , 2 * SHA256_HASH_LEN + 1> m_sha256{};
 
+    WORD m_numberOfRvaAndSizes{};
 
-    bool  m_is32Magic = false;
-    bool  m_exceededStackSections  = false;
+    bool  m_is32Magic{false};
+    bool  m_exceededStackSections{false};
 };
 
 struct PEFile {
@@ -86,20 +87,21 @@ private:
     void getFileEntropy();
     void getSectionsHashes();
     void getImports();
+    void getExports();
 
     #ifdef _WIN32
-        HANDLE m_hFile = INVALID_HANDLE_VALUE;
-        HANDLE m_hMapFile = nullptr;
+        HANDLE m_hFile{INVALID_HANDLE_VALUE};
+        HANDLE m_hMapFile{};
     #else
-        int m_fd = -1;
+        int m_fd{-1};
     #endif
 
     PEInfo m_peInfo{};
 
     
-    LPVOID m_lpAddress = nullptr;
-    LPVOID m_lpDataDirectory =  nullptr;
-    size_t m_size = 0;
+    LPVOID m_lpAddress{};
+    LPVOID m_lpDataDirectory{};
+    size_t m_size{};
     
     DWORD m_elfanew{};
 };

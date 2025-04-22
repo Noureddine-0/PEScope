@@ -379,7 +379,7 @@ void PEFile::getSections(){
         if (m_peInfo.m_sectionNumber > m_peInfo.m_maxSectionNumber)
             std::cout << "[?] WARNING : PE file has a high NumberOfSections " << m_peInfo.m_maxSectionNumber
             << " , for memory safety the maximum NumberOfSections is "<< m_peInfo.m_maxSectionNumber
-            <<" but u can change it with -nsections argument" << '\n';
+            <<" but u can change it with -nsections argument\n";
         m_peInfo.m_sectionNumber = std::min(m_peInfo.m_sectionNumber , m_peInfo.m_maxSectionNumber); 
         m_peInfo.m_exceededStackSections = true;
         try{
@@ -397,7 +397,7 @@ void PEFile::getSections(){
 
     if (m_peInfo.m_is32Magic) {
 
-        if ((optHeader.h32)->NumberOfRvaAndSizes < 16){
+        if ((m_peInfo.m_numberOfRvaAndSizes = (optHeader.h32)->NumberOfRvaAndSizes) < 16){
             std::cout << "[?] NOTE : Non-standard NumberOfRvaAndSizes (" << optHeader.h32->NumberOfRvaAndSizes
             << ")\n";
         }
@@ -411,7 +411,7 @@ void PEFile::getSections(){
             IMAGE_DATA_DIRECTORY_SIZE * dirNumber);
     }else{
 
-        if ((optHeader.h64)->NumberOfRvaAndSizes < 16){
+        if ((m_peInfo.m_numberOfRvaAndSizes = (optHeader.h64)->NumberOfRvaAndSizes) < 16){
             std::cout << "[?] NOTE : Non-standard NumberOfRvaAndSizes (" << optHeader.h64->NumberOfRvaAndSizes
             << ")\n";
         }
@@ -527,6 +527,9 @@ void PEFile::getImports(){
     DWORD iltOffset;
     Import* dllImport;
 
+    if (m_peInfo.m_numberOfRvaAndSizes < IMAGE_DIRECTORY_ENTRY_IMPORT + 1)
+        return;
+
     const DWORD importTableRva = (
         (static_cast<IMAGE_DATA_DIRECTORY*>(m_lpDataDirectory) + 
         IMAGE_DIRECTORY_ENTRY_IMPORT)->VirtualAddress);
@@ -601,8 +604,67 @@ void PEFile::getImports(){
         Next:
             importTable++;
     }
+
 }
 
+
+void PEFile::getExports(){
+
+    DWORD nameRva{};
+    DWORD nameOffset{};
+
+    std::cout << "Entered\n";
+
+    if (m_peInfo.m_numberOfRvaAndSizes < IMAGE_DIRECTORY_ENTRY_EXPORT +1)
+        return;
+
+    const DWORD exportDirRva = (
+        (static_cast<IMAGE_DATA_DIRECTORY*>(m_lpDataDirectory) + 
+        IMAGE_DIRECTORY_ENTRY_EXPORT)->VirtualAddress);
+
+
+    const DWORD exportDirSize = (
+        (static_cast<IMAGE_DATA_DIRECTORY*>(m_lpDataDirectory) + 
+        IMAGE_DIRECTORY_ENTRY_EXPORT)->Size);
+
+    if (!exportDirRva || !exportDirSize)
+        return;
+
+    const DWORD exportDirOffset  = utils::safeRvaToFileOffset(exportDirRva, m_peInfo.m_ptr ,
+                                         m_peInfo.m_sectionNumber,__FUNCTION__);
+
+    CHECK_OFFSET(exportDirOffset + sizeof(IMAGE_EXPORT_DIRECTORY) , m_size);
+    auto exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(
+        reinterpret_cast<ULONGLONG>(m_lpAddress) + exportDirOffset);
+
+
+    if (exportDir->NumberOfNames < exportDir->NumberOfFunctions){
+        std::cout << "[?] WARNING : Some or all exports are only exported by ordinal\n";
+        goto GetNames;
+    }
+    if(exportDir->NumberOfNames > exportDir->NumberOfFunctions){
+        std::cout << "[?] WARNING : In Export directory , number of names is greater than number of functions????\n";
+        goto GetNames;
+    }
+
+GetNames:
+    if(!(exportDir->NumberOfNames)) return;
+    DWORD addressOfNamesRva =  exportDir->AddressOfNames;
+    if (!addressOfNamesRva)
+        return;
+
+    DWORD addressOfNamesOffset = utils::safeRvaToFileOffset(addressOfNamesRva ,m_peInfo.m_ptr ,
+                                         m_peInfo.m_sectionNumber,__FUNCTION__);
+    CHECK_OFFSET(addressOfNamesOffset + exportDir->NumberOfNames * sizeof(DWORD) , m_size);
+    for (DWORD nameIter = 0 ; nameIter < exportDir->NumberOfNames ; nameIter++ ){
+        nameRva =  *reinterpret_cast<DWORD*>(reinterpret_cast<ULONGLONG>(m_lpAddress) + 
+            addressOfNamesOffset + nameIter * sizeof(DWORD));
+
+        nameOffset = utils::safeRvaToFileOffset(nameRva , m_peInfo.m_ptr ,
+                    m_peInfo.m_sectionNumber,__FUNCTION__);
+        m_peInfo.m_allExports.push_back(reinterpret_cast<char *>(m_lpAddress) + nameOffset);
+    }
+}
 
 /*
  * The order on which those functions are called is important.
@@ -619,4 +681,5 @@ void PEFile::parse(){
     getSectionsEntropy();
     getSectionsHashes();
     getImports();
+    getExports();
 }
