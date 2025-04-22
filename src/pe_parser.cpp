@@ -725,7 +725,7 @@ void PEFile::printResult(){
     }
 
     puts("Exports:");
-    if (m_peInfo.m_allImports.empty()){
+    if (m_peInfo.m_allExports.empty()){
         puts("\tNo Exports");
     }else{
         for (const auto& export_: m_peInfo.m_allExports){
