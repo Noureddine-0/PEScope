@@ -377,7 +377,7 @@ void PEFile::getSections(){
     m_peInfo.m_sectionNumber = fileHeader->NumberOfSections;
     if (m_peInfo.m_sectionNumber > INITIAL_SECTION_NUMBER){
         if (m_peInfo.m_sectionNumber > m_peInfo.m_maxSectionNumber)
-            std::cout << "[?] WARNING : PE file has a high NumberOfSections " << m_peInfo.m_maxSectionNumber
+            std::cout << "[?] WARNING : PE file has a high NumberOfSections " << m_peInfo.m_sectionNumber
             << " , for memory safety the maximum NumberOfSections is "<< m_peInfo.m_maxSectionNumber
             <<" but u can change it with -nsections argument\n";
         m_peInfo.m_sectionNumber = std::min(m_peInfo.m_sectionNumber , m_peInfo.m_maxSectionNumber); 
@@ -612,8 +612,6 @@ void PEFile::getExports(){
 
     DWORD nameRva{};
     DWORD nameOffset{};
-
-    std::cout << "Entered\n";
 
     if (m_peInfo.m_numberOfRvaAndSizes < IMAGE_DIRECTORY_ENTRY_EXPORT +1)
         return;
