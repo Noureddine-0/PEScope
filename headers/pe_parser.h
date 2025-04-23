@@ -3,7 +3,7 @@
 
 
 
-constexpr int  INITIAL_SECTION_NUMBER = 10 ;
+constexpr unsigned int  INITIAL_SECTION_NUMBER = 10 ;
 
 struct Import{
     char *m_dllName;
@@ -42,9 +42,7 @@ struct PEInfo{
 
     std::vector<Import*> m_allImports{};
     std::vector<char *> m_allExports{};
-    DWORD m_sectionNumber{10};
-    DWORD m_maxSectionNumber{20};
-
+    WORD m_sectionNumber{10};
 
     char m_timeStampString[80];
 
@@ -74,7 +72,6 @@ struct PEFile {
 private:
 
     void loadFromFile(const char *);
-    void changeMaxSectionNumber(const DWORD);
     bool isValidPe()  ;
     void getMachine() ;
     void getCharacteristics();

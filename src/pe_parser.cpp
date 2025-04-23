@@ -3,6 +3,37 @@
 #include <pe_parser.h>
 #include <pe_structs.h>
 
+/**
+ *
+ * @details
+ * This module provides comprehensive parsing and analysis of PE files (Windows executables and DLLs).
+ * It extracts structural information, performs basic security analysis, and calculates various hashes.
+ * 
+ * Each function is described for better understanding.
+ *
+ * Key features:
+ * - Extracts PE header information including:
+ *   - Machine architecture (x86/x64/ARM etc.)
+ *   - File type (EXE/DLL/SYS)
+ *   - Subsystem (Console/GUI/Driver etc.)
+ *   - Compilation timestamp
+ *   - 32/64-bit flag
+ * - Extracts section information including:
+ *   - Section names
+ *   - Virtual/physical sizes
+ *   - Characteristics
+ *   - Entropy calculation per section
+ * - Extracts import/export tables
+ * - Calculates file and sections hashes:
+ *   - MD5
+ *   - SHA-1
+ *   - SHA-256
+ * - Calculates entropy for:
+ *   - Entire file
+ *   - Each individual section
+ * 
+ * @author Noureddine Azfar
+ * /
 
 
 /**
@@ -327,12 +358,10 @@ void PEFile::getTimeDateStamp(){
  * - Validates memory bounds to prevent out-of-bounds access using `CHECK_OFFSET`.
  * - Calculates the address of the section header table.
  * - If the section count exceeds `INITIAL_SECTION_NUMBER`, it dynamically allocates space
- *   using `new InfoSection[]`, capped at `m_peInfo.MaxSectionNumber` for safety.
+ *   using `new InfoSection[]`.
  * - Copies each `IMAGE_SECTION_HEADER` into `InfoSection` entries.
  *
  * @warning
- * - Malformed or malicious PE files may report extremely high `NumberOfSections`.
- *   This implementation limits allocation to a max (`MaxSectionNumber`) to avoid OOM or DoS.
  * - If the `NumberOfRvaAndSizes` field is below 16, a warning is shown since it's uncommon.
  * 
  * @note
@@ -376,11 +405,6 @@ void PEFile::getSections(){
 
     m_peInfo.m_sectionNumber = fileHeader->NumberOfSections;
     if (m_peInfo.m_sectionNumber > INITIAL_SECTION_NUMBER){
-        if (m_peInfo.m_sectionNumber > m_peInfo.m_maxSectionNumber)
-            std::cout << "[?] WARNING : PE file has a high NumberOfSections " << m_peInfo.m_sectionNumber
-            << " , for memory safety the maximum NumberOfSections is "<< m_peInfo.m_maxSectionNumber
-            <<" but u can change it with -nsections argument\n";
-        m_peInfo.m_sectionNumber = std::min(m_peInfo.m_sectionNumber , m_peInfo.m_maxSectionNumber); 
         m_peInfo.m_exceededStackSections = true;
         try{
             m_peInfo.m_ptr =  new InfoSection[m_peInfo.m_sectionNumber];
@@ -437,9 +461,6 @@ void PEFile::getSections(){
 }
 
 
-void PEFile::changeMaxSectionNumber(const DWORD Max){
-    m_peInfo.m_maxSectionNumber =  std::max(Max , m_peInfo.m_maxSectionNumber);
-}
 
 /**
  * @brief Computes the entropy for each section in the PE file.

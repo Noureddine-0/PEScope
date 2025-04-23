@@ -41,18 +41,14 @@ if(WIN32)
     target_sources(PEScope PRIVATE ${RESOURCE_FILE})
 endif()
 
-message(STATUS "Release Flags : ${CMAKE_CXX_FLAGS_RELEASE}")
-message(STATUS "Debug flags : ${CMAKE_CXX_FLAGS_DEBUG}")
-
-
-include_directories(headers)
+target_include_directories(PEScope PRIVATE headers)
+target_include_directories(PEScope PRIVATE headers/plugins_include)
 
 # OpenSSL
 set(OPENSSL_BUILD_VERSION "3.1.5" CACHE STRING "OpenSSL version to build")
 
 
 add_subdirectory("external/openssl-cmake")
-
 
 target_link_libraries(PEScope PUBLIC ssl crypto)
 
@@ -68,3 +64,15 @@ if(WIN32)
             $<TARGET_FILE_DIR:PEScope>
     )
 endif()
+
+#Build plugins
+file(GLOB plugin_dirs LIST_DIRECTORIES true "src/plugins_src/*")
+foreach(plugin_dir ${plugin_dirs})
+    if(IS_DIRECTORY "${plugin_dir}")
+        get_filename_component(plugin_name "${plugin_dir}" NAME)
+        add_subdirectory(
+            "${plugin_dir}"
+            "plugins/${plugin_name}"
+        )
+    endif()
+endforeach()

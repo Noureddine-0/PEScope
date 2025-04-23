@@ -35,8 +35,10 @@
 #include <ctime>
 #include <iostream>
 #include <memory>
-#include <openssl/evp.h>
-#include <openssl/sha.h>
+#ifndef _PLUGIN
+	#include <openssl/evp.h>
+	#include <openssl/sha.h>
+#endif
 #include <system_error>
 #include <unordered_map>
 #include <vector>
