@@ -60,4 +60,4 @@ constexpr int SHA1_HASH_LEN  = 20;
 constexpr int SHA256_HASH_LEN = 32;
 
 
-constexpr unsigned int CONCURRENCY_THRESHOLD = 2*20;
+constexpr unsigned int CONCURRENCY_THRESHOLD = 1 << 20;

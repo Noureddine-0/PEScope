@@ -110,6 +110,7 @@ private:
 struct ThreadPool{
     ThreadPool(PEFile&);
     ~ThreadPool();
+    void start();
 
 
 private:
@@ -122,6 +123,5 @@ private:
 
 
     int getProcessorsCount();
-    void start();
     void doWork(int);
 };
