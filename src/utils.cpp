@@ -128,24 +128,27 @@ void utils::getSha256(LPCVOID lpAddress, const size_t size, std::array<uint8_t, 
  *
  * @note If the buffer size is 0, the function returns immediately without modifying entropy.
  *       The entropy value is **accumulated** onto the value pointed by `entropy`.
+ * 
+ * Now calculateEntropy uses a simple array instead of std::unordered_map
  *
  */
 
-void utils::calculateEntropy(LPCVOID lpAddress , size_t size , double* entropy){
-    
-    double probability;
-    std::unordered_map<unsigned char , size_t> frequency;
+void utils::calculateEntropy(LPCVOID lpAddress, size_t size, double* entropy) {
+    if (!size || !entropy) return;
 
-    if(!size) return ;
+    std::array<size_t, 256> frequency = {0};
 
-    const unsigned char* bytes  =  static_cast<const unsigned char*>(lpAddress);
+    const unsigned char* bytes = static_cast<const unsigned char*>(lpAddress);
 
-    for(size_t i = 0 ;i < size ; i++)
+    for (size_t i = 0; i < size; ++i)
         frequency[bytes[i]]++;
 
-    for (const auto& pair : frequency){
-        probability = static_cast<double>(pair.second) / size;
-        *entropy -=probability * log2(probability);
+    for (size_t i = 0; i < 256; ++i) {
+        if (frequency[i] == 0)
+            continue;
+
+        double probability = static_cast<double>(frequency[i]) / size;
+        *entropy -= probability * log2(probability);
     }
 }
 
