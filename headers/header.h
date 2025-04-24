@@ -28,6 +28,7 @@
 
 #include <array>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -40,6 +41,7 @@
 	#include <openssl/sha.h>
 #endif
 #include <system_error>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -56,3 +58,6 @@
 constexpr int MD5_HASH_LEN =  16;
 constexpr int SHA1_HASH_LEN  = 20;
 constexpr int SHA256_HASH_LEN = 32;
+
+
+constexpr unsigned int CONCURRENCY_THRESHOLD = 2*20;

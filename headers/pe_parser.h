@@ -5,10 +5,6 @@
 
 constexpr unsigned int  INITIAL_SECTION_NUMBER = 10 ;
 
-struct Import{
-    char *m_dllName;
-    std::vector<char*> m_apisVector{};
-};
 
 struct InfoSection{
 
@@ -21,6 +17,13 @@ struct InfoSection{
     std::array<uint8_t , 2 * SHA1_HASH_LEN + 1> m_sha1{};
     std::array<uint8_t , 2 * SHA256_HASH_LEN + 1> m_sha256{};
 };
+
+
+struct Import{
+    char *m_dllName;
+    std::vector<char*> m_apisVector{};
+};
+
 
 
 struct PEInfo{
@@ -68,6 +71,16 @@ struct PEFile {
 
     void parse();
     void printResult();
+    void getFileHashes();
+
+    PEInfo m_peInfo{};
+
+    
+    LPVOID m_lpAddress{};
+    LPVOID m_lpDataDirectory{};
+    size_t m_size{};
+    
+    DWORD m_elfanew{};
 
 private:
 
@@ -77,7 +90,6 @@ private:
     void getCharacteristics();
     void getSubsystem() ;
     void getMagic();
-    void getFileHashes();
     void getTimeDateStamp();
     void getSections();
     void getSectionsEntropy();
@@ -93,12 +105,23 @@ private:
         int m_fd{-1};
     #endif
 
-    PEInfo m_peInfo{};
+};
 
+struct ThreadPool{
+    ThreadPool(PEFile&);
+    ~ThreadPool();
+
+
+private:
     
-    LPVOID m_lpAddress{};
-    LPVOID m_lpDataDirectory{};
-    size_t m_size{};
-    
-    DWORD m_elfanew{};
+    std::vector<std::thread> workers{};
+    std::atomic<int> m_index;
+        
+    PEFile& pe;
+    int m_numberOfProcessors{};
+
+
+    int getProcessorsCount();
+    void start();
+    void doWork(int);
 };

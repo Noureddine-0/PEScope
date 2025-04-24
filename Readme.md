@@ -61,7 +61,7 @@ cmake ..
 
 The project has been successfully built and tested on:
 - Windows 10/11:
-	- Microsoft Visual Studio 2022 (MSVC 17)
+	- Microsoft Visual Studio 2022 (MSVC 19)
 	- MinGW-w64 (GCC [11.0 w64])
 - Linux:
 	- GCC [11.4.0]

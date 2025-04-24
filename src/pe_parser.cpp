@@ -602,8 +602,8 @@ void PEFile::getImports(){
                     const auto importByName = reinterpret_cast<IMAGE_IMPORT_BY_NAME *>(static_cast<BYTE *>(m_lpAddress) + apiNameOffset);
                     auto apiName = (char*)importByName->Name;
                     dllImport->m_apisVector.push_back(apiName);
-                    thunk++;
                 }
+                thunk++;
             }        
         }else{
             CHECK_OFFSET(iltOffset + sizeof(IMAGE_THUNK_DATA64) , m_size);
@@ -617,8 +617,8 @@ void PEFile::getImports(){
                     const auto importByName = reinterpret_cast<IMAGE_IMPORT_BY_NAME *>(static_cast<BYTE *>(m_lpAddress) + apiNameOffset);
                     auto apiName = static_cast<char *>(importByName->Name);
                     dllImport->m_apisVector.push_back(apiName);
-                    thunk++;
                 }
+                thunk++;
            }
         }
 
@@ -696,11 +696,24 @@ void PEFile::parse(){
     getTimeDateStamp();
     getSections();
     getCharacteristics();
-    getFileHashes();
-    getSectionsEntropy();
-    getSectionsHashes();
+
+    if (m_size > CONCURRENCY_THRESHOLD) 
+    {
+        // Engage file hashing with section hashing , no point main thread sits idle
+        {
+            ThreadPool t_pool{*this};
+            getFileHashes();
+        }
+    }
+    else{
+        getFileHashes();
+        getSectionsEntropy();
+        getSectionsHashes();
+    }
+
     getImports();
     getExports();
+
 }
 
 void PEFile::printResult(){
@@ -750,5 +763,74 @@ void PEFile::printResult(){
         for (const auto& export_: m_peInfo.m_allExports){
             printf("\t%s\n",export_);
         }
+    }
+}
+
+int ThreadPool::getProcessorsCount(){
+    #ifdef _WIN32
+        SYSTEM_INFO sysInfo{};
+        GetSystemInfo(&sysInfo);
+        return sysInfo.dwNumberOfProcessors;
+    #else
+        return sysconf(_SC_NPROCESSORS_ONLN);
+    #endif
+}
+
+ThreadPool::ThreadPool(PEFile& _pe) : pe{_pe}{
+    m_numberOfProcessors =  getProcessorsCount();
+    start();
+}
+
+void ThreadPool::start(){
+    for (int i  = 0 ; i < m_numberOfProcessors ; i++){
+        workers.emplace_back([this] () {
+            while(true){
+                int index = m_index.fetch_add(1);
+                if (index >= pe.m_peInfo.m_sectionNumber) return;
+                doWork(index);
+
+            }
+
+        });
+    }
+}
+
+void ThreadPool::doWork(int index){
+    InfoSection* ptr =  pe.m_peInfo.m_ptr + index ;
+
+    std::array<uint8_t , MD5_HASH_LEN> md5{};
+    std::array<uint8_t , SHA1_HASH_LEN> sha1{};
+    std::array<uint8_t , SHA256_HASH_LEN> sha256{};
+
+
+    CHECK_OFFSET((ptr->m_sectionHeader).PointerToRawData + (ptr->m_sectionHeader).SizeOfRawData , pe.m_size);
+    
+    utils::calculateEntropy(reinterpret_cast<LPCVOID>(
+        (ptr->m_sectionHeader).PointerToRawData + 
+        reinterpret_cast<ULONGLONG>(pe.m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
+        &(ptr->m_entropy));
+
+    utils::getMd5(reinterpret_cast<LPCVOID>(
+        (ptr->m_sectionHeader).PointerToRawData + 
+        reinterpret_cast<ULONGLONG>(pe.m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
+        md5);
+    utils::getSha1(reinterpret_cast<LPCVOID>(
+        (ptr->m_sectionHeader).PointerToRawData + 
+        reinterpret_cast<ULONGLONG>(pe.m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
+        sha1);
+    utils::getSha256(reinterpret_cast<LPCVOID>(
+        (ptr->m_sectionHeader).PointerToRawData + 
+        reinterpret_cast<ULONGLONG>(pe.m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
+        sha256);
+
+    utils::bytesToHexString(md5.data() , MD5_HASH_LEN , ptr->m_md5.data());
+    utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , ptr->m_sha1.data());
+    utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->m_sha256.data());
+}
+
+ThreadPool::~ThreadPool(){
+    for (auto& worker : workers){
+        if (worker.joinable())
+            worker.join();
     }
 }
