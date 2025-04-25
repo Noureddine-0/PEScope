@@ -110,7 +110,9 @@ private:
 struct ThreadPool{
     ThreadPool(PEFile&);
     ~ThreadPool();
+    void start();
 
+    int m_numberOfProcessors{};
 
 private:
     
@@ -118,10 +120,8 @@ private:
     std::atomic<int> m_index;
         
     PEFile& pe;
-    int m_numberOfProcessors{};
 
 
     int getProcessorsCount();
     void doWork(int);
-    void start();
 };

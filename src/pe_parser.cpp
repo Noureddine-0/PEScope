@@ -3,7 +3,7 @@
 #include <pe_parser.h>
 #include <pe_structs.h>
 
-/**
+/*
  *
  * @details
  * This module provides comprehensive parsing and analysis of PE files (Windows executables and DLLs).
@@ -33,7 +33,7 @@
  *   - Each individual section
  * 
  * @author Noureddine Azfar
- * /
+ */
 
 
 /**
@@ -205,6 +205,17 @@ void PEFile::getCharacteristics(){
 }
 
 
+/**
+ * @brief Retrieves the subsystem type of the PE file.
+ * 
+ * Determines whether the PE file is a GUI, CUI, EFI, or other subsystem type by
+ * examining the optional header (32-bit or 64-bit). The result is stored as a
+ * human-readable string in `m_peInfo.m_subsystem`.
+ * 
+ * @note The function handles both 32-bit and 64-bit PE files. If the subsystem
+ * is unrecognized, "undefined" is stored.
+ */
+
 void PEFile::getSubsystem(){
 
     union OptionalHeaderPtr {
@@ -247,7 +258,7 @@ void PEFile::getSubsystem(){
     }
 }
 /**
- * Determines the target architecture of the PE file.
+ * @brief Determines the target architecture of the PE file.
  * 
  * Parses the `Machine` field in the IMAGE_FILE_HEADER to identify the processor 
  * architecture (e.g., x86, x64, ARM, Itanium, etc.). Stores the result as a short 
@@ -502,11 +513,22 @@ void PEFile::getSectionsEntropy(){
 }
 
 
+/**
+ * @brief Calculates MD5, SHA1, and SHA256 hashes for each PE section.
+ * 
+ * Computes cryptographic hashes (MD5, SHA1, SHA256) for every section in the PE file
+ * using the raw section data. The resulting hash strings are stored in each section's
+ * InfoSection structure (m_md5, m_sha1, m_sha256).
+ *
+ * @warning Requires sections to be loaded first (via getSections).
+ * Will trigger a fatal error if called before section data is available.
+ */
+
 void PEFile::getSectionsHashes(){
     InfoSection* ptr =  m_peInfo.m_ptr;
     
     if(!ptr){
-        utils::fatalError("[!] Trying to calculate sections entropy before getting sections");
+        utils::fatalError("[!] Trying to calculate sections hashes before getting sections");
     }
 
     std::array<uint8_t , MD5_HASH_LEN> md5{};
@@ -535,6 +557,28 @@ void PEFile::getSectionsHashes(){
         utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->m_sha256.data()); 
     }
 }
+
+/**
+ * @brief Parses and retrieves all imported DLLs and their functions from the PE file.
+ * 
+ * This function analyzes the PE import directory to extract:
+ * - All imported DLL names
+ * - Each function imported from those DLLs
+ * 
+ * The results are stored in m_peInfo.m_allImports as a vector of Import structures,
+ * where each Import contains:
+ * - m_dllName: The DLL name being imported from
+ * - m_apisVector: List of function names imported from this DLL
+ *
+ * @note Handles both 32-bit and 64-bit PE files automatically
+ * @note Uses safe RVA-to-offset conversion with bounds checking
+ * @note Skips imports by ordinal (only captures named imports)
+ * 
+ * @warning Will return early if:
+ *          - Import directory doesn't exist (numberOfRvaAndSizes too small)
+ *          - Import table has zero size
+ *          - Memory allocation fails (throws fatal error)
+ */
 
 void PEFile::getImports(){
 
@@ -629,6 +673,29 @@ void PEFile::getImports(){
 }
 
 
+/**
+ * @brief Retrieves all exported functions from the PE file.
+ * 
+ * Parses the PE export directory to extract all named exported functions.
+ * The exported function names are stored in m_peInfo.m_allExports vector.
+ *
+ * @details The function:
+ * - Verifies the export directory exists and has valid size
+ * - Performs safe RVA-to-offset conversion with bounds checking
+ * - Handles export directory anomalies (warns about ordinal-only exports)
+ * - Only captures named exports (ignores ordinal-only exports)
+ *
+ * @note Generates warnings for:
+ *       - Potential ordinal-only exports (NumberOfNames < NumberOfFunctions)
+ *       - Suspicious case where NumberOfNames > NumberOfFunctions
+ *
+ * @warning Returns early if:
+ *          - Export directory doesn't exist (numberOfRvaAndSizes too small)
+ *          - Export table has zero size
+ *          - No named exports exist (NumberOfNames == 0)
+ */
+
+
 void PEFile::getExports(){
 
     DWORD nameRva{};
@@ -685,10 +752,43 @@ GetNames:
     }
 }
 
-/*
- * The order on which those functions are called is important.
- * Some offset checks are only made in specific functions but needed in others
-*/
+/**
+ * @brief Executes the complete PE file parsing pipeline with optimized parallel processing
+ * 
+ * Coordinates the analysis of a Portable Executable (PE) file, automatically selecting
+ * between parallel and sequential processing modes based on file size and available
+ * CPU cores. The function maintains strict operation ordering to ensure dependencies
+ * are respected.
+ *
+ * @details The parsing occurs in three phases:
+ * 1. Mandatory Sequential Initialization:
+ *
+ * 2. Conditional Parallel Processing (if m_size > CONCURRENCY_THRESHOLD):
+ *    - Creates a ThreadPool for concurrent execution
+ *    - Processes in parallel:
+ *      - File hashing (getFileHashes)
+ *      - Import table parsing (getImports)
+ *      - Export table parsing (getExports)
+ *    - Falls back to sequential if <2 CPU cores available
+ *
+ * 3. Sequential Processing (small files or single-core):
+ *    - Performs all operations serially with additional:
+ *      - Section entropy analysis (getSectionsEntropy)
+ *      - Per-section hashing (getSectionsHashes)
+ *
+ * @note Operation ordering is critical:
+ *       - Validation must complete before analysis
+ *       - Section data must be loaded before entropy/hashing
+ *       - Thread pool is scoped to ensure proper cleanup
+ *
+ * @warning Parallel mode only activates when:
+ *          - File exceeds CONCURRENCY_THRESHOLD size
+ *          - System has multiple CPU cores
+ *          - No failures in initial sequential phase
+ * @warning The goto statement is used for control flow optimization between
+ *          parallel and sequential paths, not as a general jump
+ */
+
 void PEFile::parse(){
     isValidPe();
     getMachine();
@@ -702,19 +802,44 @@ void PEFile::parse(){
         // Engage file hashing with section hashing , no point main thread sits idle
         {
             ThreadPool t_pool{*this};
+            if (t_pool.m_numberOfProcessors < 2) goto Sequential;
+            t_pool.start();
             getFileHashes();
         }
-    }
-    else{
+    }else{
+        Sequential:
         getFileHashes();
         getSectionsEntropy();
         getSectionsHashes();
+
     }
-
-    getImports();
-    getExports();
-
+        getImports();
+        getExports();
 }
+
+/**
+ * @brief Prints comprehensive analysis results of the PE file in human-readable format.
+ * 
+ * Outputs all collected PE file information including:
+ * - File type and subsystem
+ * - Architecture (32/64-bit)
+ * - Compilation timestamp
+ * - File-level hashes (MD5, SHA1, SHA256)
+ * - Machine type
+ * - Section details (name, entropy, hashes)
+ * - Import table (DLLs and their functions)
+ * - Export table (exported functions)
+ *
+ * @details The output format is organized as:
+ * 1. Header information (type, arch, timestamp, hashes)
+ * 2. Sections table with cryptographic hashes and entropy
+ * 3. Imports list (DLLs with their API functions)
+ * 4. Exports list
+ * 
+ * @note Handles empty cases gracefully (shows "No Imports"/"No Exports")
+ * @note Entropy values are displayed with 4 decimal places
+ */
+
 
 void PEFile::printResult(){
     InfoSection infoSection{} ;
@@ -766,6 +891,19 @@ void PEFile::printResult(){
     }
 }
 
+/**
+ * @brief Retrieves the number of available CPU cores/processors on the system.
+ * 
+ * Provides a cross-platform way to determine the number of logical processors:
+ * - On Windows: Uses `GetSystemInfo()` Win32 API
+ * - On Unix-like systems: Uses `sysconf(_SC_NPROCESSORS_ONLN)`
+ * 
+ * @return int Number of available logical processors (always > 0)
+ * 
+ * @note This count includes hyper-threaded cores on supporting systems
+ * @note The result is typically used for thread pool sizing optimization
+ */
+
 int ThreadPool::getProcessorsCount(){
     #ifdef _WIN32
         SYSTEM_INFO sysInfo{};
@@ -776,13 +914,27 @@ int ThreadPool::getProcessorsCount(){
     #endif
 }
 
+/**
+ * @brief Constructs a ThreadPool for PE file analysis
+ * @param _pe Reference to the PEFile to be processed
+ * @note Automatically detects available CPU cores
+ */
+
 ThreadPool::ThreadPool(PEFile& _pe) : pe{_pe}{
     m_numberOfProcessors =  getProcessorsCount();
-    start();
 }
 
+/**
+ * @brief Launches worker threads to process PE file sections in parallel
+ * 
+ * Creates N-1 worker threads (where N = CPU cores) that:
+ * - Atomically fetch section indices
+ * - Process each section via doWork()
+ * - Automatically terminate when all sections are processed
+ */
+
 void ThreadPool::start(){
-    for (int i  = 0 ; i < m_numberOfProcessors ; i++){
+    for (int i  = 0 ; i < m_numberOfProcessors - 1 ; i++){
         workers.emplace_back([this] () {
             while(true){
                 int index = m_index.fetch_add(1);
@@ -794,6 +946,16 @@ void ThreadPool::start(){
         });
     }
 }
+
+/**
+ * @brief Processes a single PE section (worker thread task)
+ * @param index Section index to process
+ * @details For the given section:
+ *          - Calculates entropy
+ *          - Computes MD5/SHA1/SHA256 hashes
+ *          - Stores results in section info
+ * @warning Performs bounds checking via CHECK_OFFSET
+ */
 
 void ThreadPool::doWork(int index){
     InfoSection* ptr =  pe.m_peInfo.m_ptr + index ;
@@ -827,6 +989,12 @@ void ThreadPool::doWork(int index){
     utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , ptr->m_sha1.data());
     utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , ptr->m_sha256.data());
 }
+
+/**
+ * @brief ThreadPool destructor
+ * @note Safely joins all worker threads before destruction
+ * @warning Blocks until all threads complete their work
+ */
 
 ThreadPool::~ThreadPool(){
     for (auto& worker : workers){
