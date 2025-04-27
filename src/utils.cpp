@@ -137,7 +137,6 @@ void utils::calculateEntropy(LPCVOID lpAddress, size_t size, double* entropy) {
     if (!size || !entropy) return;
 
     std::array<size_t, 256> frequency = {0};
-
     const unsigned char* bytes = static_cast<const unsigned char*>(lpAddress);
 
     for (size_t i = 0; i < size; ++i)

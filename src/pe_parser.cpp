@@ -811,10 +811,11 @@ void PEFile::parse(){
         getFileHashes();
         getSectionsEntropy();
         getSectionsHashes();
-
     }
-        getImports();
-        getExports();
+
+    getImports();
+    getExports();
+
 }
 
 /**
@@ -891,6 +892,12 @@ void PEFile::printResult(){
     }
 }
 
+
+/**
+ * @WARNING : MultiThreading is not `SAFE` Yet
+ *
+ */
+
 /**
  * @brief Retrieves the number of available CPU cores/processors on the system.
  * 
@@ -940,7 +947,6 @@ void ThreadPool::start(){
                 int index = m_index.fetch_add(1);
                 if (index >= pe.m_peInfo.m_sectionNumber) return;
                 doWork(index);
-
             }
 
         });
@@ -971,7 +977,7 @@ void ThreadPool::doWork(int index){
         (ptr->m_sectionHeader).PointerToRawData + 
         reinterpret_cast<ULONGLONG>(pe.m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
         &(ptr->m_entropy));
-
+    
     utils::getMd5(reinterpret_cast<LPCVOID>(
         (ptr->m_sectionHeader).PointerToRawData + 
         reinterpret_cast<ULONGLONG>(pe.m_lpAddress)) , (ptr->m_sectionHeader).SizeOfRawData,
