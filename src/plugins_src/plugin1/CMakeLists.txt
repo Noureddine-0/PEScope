@@ -1,5 +1,10 @@
+include(${CMAKE_SOURCE_DIR}/cmake/plugins/plugin1.cmake)
+
 project(plugin1 LANGUAGES CXX)
 
+configure_file(
+    ${CMAKE_SOURCE_DIR}/conf/plugins/plugin1.h.in
+    ${CMAKE_SOURCE_DIR}/headers/plugins_include/plugin1.h)
 
 add_library(plugin1 SHARED plugin1.cpp)
 

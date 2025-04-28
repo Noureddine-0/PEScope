@@ -11,6 +11,8 @@
 extern "C"{
 	struct PluginInfo{
 		const char *m_name;
+		const char *m_description;
+		const char *m_version;
 	};
 
 	PLUGIN_EXPORT PluginInfo& getPluginInfo();

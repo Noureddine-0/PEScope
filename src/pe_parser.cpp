@@ -732,7 +732,7 @@ void PEFile::getExports(){
     else if(exportDir->NumberOfNames > exportDir->NumberOfFunctions){
         std::cout << "[?] WARNING : In Export directory , number of names is greater than number of functions????\n";
     }
-    
+
     if(!(exportDir->NumberOfNames)) return;
     DWORD addressOfNamesRva =  exportDir->AddressOfNames;
     if (!addressOfNamesRva)
@@ -841,7 +841,7 @@ void PEFile::parse(){
 void PEFile::printResult(){
     InfoSection infoSection{} ;
     DWORD iter{};
-    char sectionName[IMAGE_SIZEOF_SHORT_NAME + 1];
+    char sectionName[IMAGE_SIZEOF_SHORT_NAME + 1] = {};
     printf("Type : %s(%s)\n",m_peInfo.m_characteristics.data(),m_peInfo.m_subsystem.data());
     if(m_peInfo.m_is32Magic)
         puts("Architecture : 32-bit\n");
