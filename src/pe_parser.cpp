@@ -51,6 +51,8 @@
  */
 
 
+int ThreadPool::s_numberOfProcessors = 0;
+
 void PEFile::loadFromFile(const char *filePath) {
 #ifdef _WIN32
     m_hFile  =  CreateFileA(filePath, GENERIC_READ , FILE_SHARE_READ|FILE_SHARE_WRITE , nullptr , OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL , nullptr);
@@ -726,14 +728,11 @@ void PEFile::getExports(){
 
     if (exportDir->NumberOfNames < exportDir->NumberOfFunctions){
         std::cout << "[?] WARNING : Some or all exports are only exported by ordinal\n";
-        goto GetNames;
     }
-    if(exportDir->NumberOfNames > exportDir->NumberOfFunctions){
+    else if(exportDir->NumberOfNames > exportDir->NumberOfFunctions){
         std::cout << "[?] WARNING : In Export directory , number of names is greater than number of functions????\n";
-        goto GetNames;
     }
-
-GetNames:
+    
     if(!(exportDir->NumberOfNames)) return;
     DWORD addressOfNamesRva =  exportDir->AddressOfNames;
     if (!addressOfNamesRva)
@@ -785,8 +784,6 @@ GetNames:
  *          - File exceeds CONCURRENCY_THRESHOLD size
  *          - System has multiple CPU cores
  *          - No failures in initial sequential phase
- * @warning The goto statement is used for control flow optimization between
- *          parallel and sequential paths, not as a general jump
  */
 
 void PEFile::parse(){
@@ -796,18 +793,17 @@ void PEFile::parse(){
     getTimeDateStamp();
     getSections();
     getCharacteristics();
-
-    if (m_size > CONCURRENCY_THRESHOLD) 
+    ThreadPool::getProcessorsCount();
+    
+    if (m_size > CONCURRENCY_THRESHOLD && ThreadPool::s_numberOfProcessors >=2) 
     {
         // Engage file hashing with section hashing , no point main thread sits idle
         {
             ThreadPool t_pool{*this};
-            if (t_pool.m_numberOfProcessors < 2) goto Sequential;
             t_pool.start();
             getFileHashes();
         }
     }else{
-        Sequential:
         getFileHashes();
         getSectionsEntropy();
         getSectionsHashes();
@@ -905,30 +901,24 @@ void PEFile::printResult(){
  * - On Windows: Uses `GetSystemInfo()` Win32 API
  * - On Unix-like systems: Uses `sysconf(_SC_NPROCESSORS_ONLN)`
  * 
- * @return int Number of available logical processors (always > 0)
  * 
  * @note This count includes hyper-threaded cores on supporting systems
  * @note The result is typically used for thread pool sizing optimization
  */
 
-int ThreadPool::getProcessorsCount(){
+void ThreadPool::getProcessorsCount(){
     #ifdef _WIN32
         SYSTEM_INFO sysInfo{};
         GetSystemInfo(&sysInfo);
-        return sysInfo.dwNumberOfProcessors;
+        ThreadPool::s_numberOfProcessors = sysInfo.dwNumberOfProcessors;
     #else
-        return sysconf(_SC_NPROCESSORS_ONLN);
+        ThreadPool::s_numberOfProcessors = sysconf(_SC_NPROCESSORS_ONLN);
     #endif
 }
 
-/**
- * @brief Constructs a ThreadPool for PE file analysis
- * @param _pe Reference to the PEFile to be processed
- * @note Automatically detects available CPU cores
- */
 
 ThreadPool::ThreadPool(PEFile& _pe) : pe{_pe}{
-    m_numberOfProcessors =  getProcessorsCount();
+
 }
 
 /**
@@ -941,7 +931,7 @@ ThreadPool::ThreadPool(PEFile& _pe) : pe{_pe}{
  */
 
 void ThreadPool::start(){
-    for (int i  = 0 ; i < m_numberOfProcessors - 1 ; i++){
+    for (int i  = 0 ; i < s_numberOfProcessors - 1 ; i++){
         workers.emplace_back([this] () {
             while(true){
                 int index = m_index.fetch_add(1);

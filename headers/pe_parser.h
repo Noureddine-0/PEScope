@@ -112,7 +112,9 @@ struct ThreadPool{
     ~ThreadPool();
     void start();
 
-    int m_numberOfProcessors{};
+    static int s_numberOfProcessors;
+
+    static void getProcessorsCount();
 
 private:
     
@@ -122,6 +124,6 @@ private:
     PEFile& pe;
 
 
-    int getProcessorsCount();
     void doWork(int);
 };
+

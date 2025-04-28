@@ -14,7 +14,6 @@ int main(int argc, char const *argv[])
 
 	PEFile pe{argv[1]};
 	pe.parse();
-	std::cout << "OMG" << '\n';
 	pe.printResult();
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double , std::milli> duration_ms  =  end - start;
