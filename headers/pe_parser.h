@@ -30,7 +30,7 @@ struct PEInfo{
 
 
     PEInfo() =  default;
-    ~PEInfo() {
+    ~PEInfo() noexcept {
         if (m_exceededStackSections){
             delete[] m_ptr;
         }
@@ -66,7 +66,7 @@ struct PEInfo{
 struct PEFile {
 
     PEFile() = default;
-    explicit PEFile(const char* filePath);
+    explicit PEFile(const std::string& filePath);
     ~PEFile() noexcept ;
 
     void parse();
@@ -84,7 +84,7 @@ struct PEFile {
 
 private:
 
-    void loadFromFile(const char *);
+    void loadFromFile(const std::string&);
     bool isValidPe()  ;
     void getMachine() ;
     void getCharacteristics();

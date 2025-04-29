@@ -15,6 +15,9 @@ extern "C"{
 		const char *m_version;
 	};
 
-	PLUGIN_EXPORT PluginInfo& getPluginInfo();
+	PLUGIN_EXPORT PluginInfo getPluginInfo();
 	PLUGIN_EXPORT void scan(PEFile& );
 }
+
+typedef PluginInfo(*funcInfo)();
+typedef void(*funcScan)(PEFile&);

@@ -53,9 +53,9 @@
 
 int ThreadPool::s_numberOfProcessors = 0;
 
-void PEFile::loadFromFile(const char *filePath) {
+void PEFile::loadFromFile(const std::string& filePath) {
 #ifdef _WIN32
-    m_hFile  =  CreateFileA(filePath, GENERIC_READ , FILE_SHARE_READ|FILE_SHARE_WRITE , nullptr , OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL , nullptr);
+    m_hFile  =  CreateFileA(filePath.c_str(), GENERIC_READ , FILE_SHARE_READ|FILE_SHARE_WRITE , nullptr , OPEN_EXISTING , FILE_ATTRIBUTE_NORMAL , nullptr);
     if (m_hFile == INVALID_HANDLE_VALUE) {
         const DWORD err = GetLastError();
         utils::systemError(static_cast<int>(err), "[!] Failed to open the file ");
@@ -89,7 +89,7 @@ void PEFile::loadFromFile(const char *filePath) {
     #endif
 
 #else
-    m_fd  =  open(filePath , O_RDONLY);
+    m_fd  =  open(filePath.c_str() , O_RDONLY);
     if (m_fd == -1) utils::systemError(errno , "[!] Failed to open the file ");
     struct stat sb;
     if (fstat(m_fd , &sb) == -1) {
@@ -115,7 +115,7 @@ void PEFile::loadFromFile(const char *filePath) {
 
 
 
-PEFile::PEFile(const char *filePath){
+PEFile::PEFile(const std::string& filePath){
     PEFile::loadFromFile(filePath);
 }
 

@@ -21,6 +21,7 @@
 
 	#include <sys/stat.h>
     #include <fcntl.h>
+    #include <dlfcn.h>
     #include <sys/mman.h>
     #include <unistd.h>
 	#include <cerrno>
@@ -34,8 +35,10 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <filesystem>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #ifndef _PLUGIN
 	#include <openssl/evp.h>
 	#include <openssl/sha.h>
@@ -61,3 +64,9 @@ constexpr int SHA256_HASH_LEN = 32;
 
 
 constexpr unsigned int CONCURRENCY_THRESHOLD = 1 << 21;
+
+struct Arguments {
+    bool plugins{};
+    DWORD pluginDir{};
+    std::vector<std::string> files{};
+};

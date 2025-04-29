@@ -17,11 +17,14 @@ configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/conf/version.h.in
     ${CMAKE_CURRENT_SOURCE_DIR}/headers/version.h)
 
+
 add_executable(PEScope
 			 src/main.cpp
 			 src/pe_parser.cpp
-			 src/utils.cpp)
+			 src/utils.cpp
+             src/plugin_manager.cpp)
 
+target_compile_definitions(PEScope PRIVATE PLUGIN_DIRECTORY="${CMAKE_BINARY_DIR}/plugins")
 
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

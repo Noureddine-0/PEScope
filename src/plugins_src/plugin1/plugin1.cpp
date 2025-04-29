@@ -4,10 +4,32 @@
 
 PluginInfo thisPlugin{};
 
-PluginInfo& getPluginInfo(){
+#ifdef _WIN32
+BOOL APIENTRY DllMain(HMODULE hModule,
+                      DWORD ul_reason_for_call,
+                      LPVOID lpReserved){
+	switch (ul_reason_for_call){
+	case DLL_PROCESS_ATTACH:
+		thisPlugin.m_name = GetPluginName();
+		thisPlugin.m_version = GetPluginVersion();
+		thisPlugin.m_description = GetPluginDescription();
+		break;
+	}
+
+	return true;
+}
+#else
+__attribute__((constructor))
+void onLoad(){
 	thisPlugin.m_name = GetPluginName();
-	thisPlugin.m_description = GetPluginDescription();
 	thisPlugin.m_version = GetPluginVersion();
+	thisPlugin.m_description = GetPluginDescription();
+}
+#endif
+
+
+//returns copy of thisPlugi
+PluginInfo getPluginInfo(){
 	return thisPlugin;
 }
 
@@ -22,7 +44,9 @@ bool hasOverlay(const InfoSection* infoSections , WORD count , size_t size){
 	return size > lastSectionEnd;
 }
 
+
 void scan(PEFile& pe){
+	std::cout << "Start scanning" << '\n';
 	if (hasOverlay(pe.m_peInfo.m_ptr ,pe.m_peInfo.m_sectionNumber, pe.m_size )){
 		std::cout << "Has overlay" << '\n';
 	}
