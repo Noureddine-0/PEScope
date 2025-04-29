@@ -24,7 +24,7 @@ SharedLibrary::SharedLibrary(SharedLibrary&& other) noexcept
 
 bool SharedLibrary::load(){
 	#ifdef _WIN32
-		m_handle = LoadLibraryA(path);
+		m_handle = LoadLibraryA(m_path.c_str());
 	#else
 		m_handle = dlopen(m_path.c_str() , RTLD_LAZY);
 	#endif

@@ -21,28 +21,30 @@ PEScope is an **early-stage** cross-platform tool for parsing and analyzing PE f
 - C++17 compiler (GCC/Clang/MSVC)  
 
 ### Build Steps
-In Linux , the project can be built as follow:
+In Linux, you can build the project using Ninja, or you can choose to build it without it , the following steps show how to build the project with ninja.
+```bash
+git clone --recursive https://github.com/Noureddine-0/PEScope.git
+cd PEScope
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+You can also build the project normally without ninja as follow.
 ```bash
 git clone --recursive https://github.com/Noureddine-0/PEScope.git
 cd PEScope
 mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build .
 ```
-In Windows , if using MinGW follow the same steps as linux build , else if using MSVC follow the following steps:
+
+Unfortunately , to build the project in `windows` without problems we must use ninja as shown below.
 ```bash
 git clone --recursive https://github.com/Noureddine-0/PEScope.git
 cd PEScope
-mkdir build && cd build
-cmake ..
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
-– Open The solution in Visual studio.
-
-– Set PEScope as the Startup project.
-
-– Choose the build type and the architecture.
-
-– Build 
 ## :page_facing_up: Note on OpenSSL Integration
 ###  ⚠️ Current OpenSSL Build Strategy
 
@@ -62,7 +64,6 @@ cmake ..
 The project has been successfully built and tested on:
 - Windows 10/11:
 	- Microsoft Visual Studio 2022 (MSVC 19)
-	- MinGW-w64 (GCC [11.0 w64])
 - Linux:
 	- GCC [11.4.0]
 	- Clang [14.0.0]
