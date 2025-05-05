@@ -25,6 +25,8 @@
     #include <sys/mman.h>
     #include <unistd.h>
 	#include <cerrno>
+
+	#define UNREFERENCED_PARAMETER(_x_) (void)_x_
 #endif
 
 #include <array>

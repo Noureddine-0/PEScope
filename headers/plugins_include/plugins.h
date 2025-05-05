@@ -16,8 +16,8 @@ extern "C"{
 	};
 
 	PLUGIN_EXPORT PluginInfo getPluginInfo();
-	PLUGIN_EXPORT void scan(PEFile& );
+	PLUGIN_EXPORT void scan(PEFile& , std::string&);
 }
 
 typedef PluginInfo(*funcInfo)();
-typedef void(*funcScan)(PEFile&);
+typedef void(*funcScan)(PEFile& , std::string&);

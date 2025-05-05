@@ -45,7 +45,9 @@ bool hasOverlay(const InfoSection* infoSections , WORD count , size_t size){
 }
 
 
-void scan(PEFile& pe){
+void scan(PEFile& pe , std::string& outfile){
+
+	UNREFERENCED_PARAMETER(outfile);
 	std::cout << "Start scanning" << '\n';
 	if (hasOverlay(pe.m_peInfo.m_ptr ,pe.m_peInfo.m_sectionNumber, pe.m_size )){
 		std::cout << "Has overlay" << '\n';

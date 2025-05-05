@@ -10,7 +10,7 @@ void printUsage(const char* program) {
     std::cout << "  plugins_dir=directory     : Specify the directory for plugins (automatically enable plugins)\n";
     std::cout << "  file1, file2, ...         : Files to be analyzed\n";
     std::cout << "Example:\n";
-    std::cout << "  " << program <<" plugins=yes plugins_dir=/path/to/plugins file1.exe file2.exe\n";
+    std::cout << "  " << program <<" plugins=yes plugins_dir=/path/to/plugins file1.exe file2.exe ...\n";
 }
 
 void parseArguments(int argc, char* argv[], Arguments& args) {
@@ -41,7 +41,7 @@ void parseArguments(int argc, char* argv[], Arguments& args) {
                 args.pluginDir = i;
                 pluginsDirSet = true;
             } else {
-                std::cerr << "Unknown argument: " << key << std::endl;
+                std::cerr << "\nUnknown argument: " << key << "\n\n";
                 printUsage(argv[0]);
                 std::exit(EXIT_FAILURE);
             }
@@ -71,6 +71,7 @@ void parseArguments(int argc, char* argv[], Arguments& args) {
 int main(int argc, char  *argv[])
 {
 	Arguments args;
+    std::string outfile  = "analysis.txt";
 
     printf("=====================================================\n\t\tPEScope v%s\n=====================================================\n",PROJECT_VERSION);
 
@@ -81,8 +82,6 @@ int main(int argc, char  *argv[])
 
     parseArguments(argc, argv, args);
 
-	auto start =  std::chrono::high_resolution_clock::now();
-	
 	PluginManager* pm = nullptr;
 	
 	for(const auto& file : args.files){
@@ -92,17 +91,15 @@ int main(int argc, char  *argv[])
 		pe.printResult();
 		if (args.plugins){
 			if (args.pluginDir)
-				pm = new PluginManager{(const char *)"analysis.txt", argv[args.pluginDir] + strlen("plugins_dir="), pe};
+				pm = new PluginManager{outfile, argv[args.pluginDir] + strlen("plugins_dir="), pe};
 			else
-				pm = new PluginManager{(const char *)"analysis.txt", PLUGIN_DIRECTORY, pe};
+				pm = new PluginManager{outfile, PLUGIN_DIRECTORY, pe};
 			
 			pm->loadAllPlugins();
 		}
 	}
 
 	delete pm;
-	auto end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double , std::milli> duration_ms  =  end - start;
-	std::cout << duration_ms.count() << '\n';
+
 	return 0;
 }

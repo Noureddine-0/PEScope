@@ -323,6 +323,7 @@ void PEFile::getMagic(){
     }
 }
 
+
 /**
  * Computes and stores cryptographic hashes of the entire PE file.
  * 
@@ -675,6 +676,32 @@ void PEFile::getImports(){
 }
 
 
+void PEFile::checkNetAssembly(){
+    if (m_peInfo.m_is32Magic){
+        auto ntHeaders =  reinterpret_cast<IMAGE_NT_HEADERS32*>(reinterpret_cast<ULONGLONG>(m_lpAddress)
+            + m_elfanew);
+        if (m_peInfo.m_numberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR)
+            return;
+
+        IMAGE_OPTIONAL_HEADER32& optionalHeader =  ntHeaders->OptionalHeader;
+        IMAGE_DATA_DIRECTORY& clrDirectory = optionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR];
+
+        m_peInfo.m_isNetAssembly = (clrDirectory.VirtualAddress != 0 && clrDirectory.Size != 0) ? true: false ;
+    }else{
+        auto ntHeaders =  reinterpret_cast<IMAGE_NT_HEADERS64*>(reinterpret_cast<ULONGLONG>(m_lpAddress)
+            + m_elfanew);
+        if (m_peInfo.m_numberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR)
+            return;
+
+        IMAGE_OPTIONAL_HEADER64& optionalHeader =  ntHeaders->OptionalHeader;
+        IMAGE_DATA_DIRECTORY& clrDirectory = optionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR];
+
+        m_peInfo.m_isNetAssembly = (clrDirectory.VirtualAddress != 0 && clrDirectory.Size != 0) ? true : false;
+    }
+
+    return;
+}
+
 /**
  * @brief Retrieves all exported functions from the PE file.
  * 
@@ -793,6 +820,8 @@ void PEFile::parse(){
     getTimeDateStamp();
     getSections();
     getCharacteristics();
+    checkNetAssembly();
+    
     ThreadPool::getProcessorsCount();
     
     if (m_size > CONCURRENCY_THRESHOLD && ThreadPool::s_numberOfProcessors >=2) 
@@ -843,11 +872,18 @@ void PEFile::printResult(){
     DWORD iter{};
     char sectionName[IMAGE_SIZEOF_SHORT_NAME + 1] = {};
     printf("Type : %s(%s)\n",m_peInfo.m_characteristics.data(),m_peInfo.m_subsystem.data());
+    
+    if (m_peInfo.m_isNetAssembly)
+        puts(".Net Assembly : YES");
+    else
+        puts(".Net Assembly : NO");
+
     if(m_peInfo.m_is32Magic)
         puts("Architecture : 32-bit\n");
     else
         puts("Architecture : 64-bit\n");
-    printf("TimeDateStamp : %s\n",m_peInfo.m_timeStampString);
+
+    printf("TimeDateStamp : %s\n\n",m_peInfo.m_timeStampString);
     printf("md5 : %s\n",m_peInfo.m_md5.data());
     printf("sha1 : %s\n",m_peInfo.m_sha1.data());
     printf("sha256 : %s\n",m_peInfo.m_sha256.data());

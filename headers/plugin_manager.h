@@ -5,7 +5,7 @@
 struct SharedLibrary{
 	
 	SharedLibrary() = delete;
-	SharedLibrary(const std::string& path, const char* outfile);
+	SharedLibrary(const std::string& path, std::string& outfile);
 	~SharedLibrary() noexcept;
 
 	SharedLibrary(SharedLibrary&&) noexcept;
@@ -18,7 +18,7 @@ struct SharedLibrary{
 
 private:
 	std::string m_path;
-	const char *m_outfile;
+	std::string m_outfile;
 
 	#ifdef _WIN32
 		HMODULE m_handle = nullptr;
@@ -33,13 +33,13 @@ private:
 };
 
 struct PluginManager{
-	PluginManager(const char* outfile , const char* m_directory, PEFile& pe);
+	PluginManager(std::string& outfile , const char* m_directory, PEFile& pe);
 	void loadAllPlugins();
 
 private:
 
 	std::vector<SharedLibrary> m_libraries{};
-	const char *m_outfile{};
+	std::string m_outfile;
 	const char *m_directory;
 	//The mutex will be used later to sunchronize write to the analysis.txt file
 	static std::mutex s_mutex;

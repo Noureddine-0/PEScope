@@ -61,6 +61,7 @@ struct PEInfo{
 
     bool  m_is32Magic{false};
     bool  m_exceededStackSections{false};
+    bool  m_isNetAssembly{false};
 };
 
 struct PEFile {
@@ -92,6 +93,7 @@ private:
     void getMagic();
     void getTimeDateStamp();
     void getSections();
+    void checkNetAssembly();
     void getSectionsEntropy();
     void getFileEntropy();
     void getSectionsHashes();

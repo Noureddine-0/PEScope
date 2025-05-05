@@ -3,7 +3,7 @@
 
 std::mutex PluginManager::s_mutex{};
 
-SharedLibrary::SharedLibrary(const std::string& path , const char *outfile) 
+SharedLibrary::SharedLibrary(const std::string& path , std::string& outfile) 
 					: m_path(path),
 					  m_outfile(outfile){
 
@@ -16,7 +16,7 @@ SharedLibrary::~SharedLibrary() noexcept{
 
 SharedLibrary::SharedLibrary(SharedLibrary&& other) noexcept
     : m_path(std::move(other.m_path)),
-      m_outfile(std::exchange(other.m_outfile , nullptr)),
+      m_outfile(std::move(other.m_outfile)),
       m_handle(std::exchange(other.m_handle, nullptr))
       
 {
@@ -54,14 +54,14 @@ T SharedLibrary::getSymbol(const char *symbol){
 	#endif
 }
 
-PluginManager::PluginManager(const char *outfile , const char * directory ,PEFile& pe) :m_outfile(outfile),m_directory(directory),m_pe(pe){
-	std::cout << "Directory is:" <<directory <<'\n'; 
+PluginManager::PluginManager(std::string& outfile, const char * directory ,PEFile& pe) :m_outfile(outfile),m_directory(directory),m_pe(pe){
 }
 
 void PluginManager::loadAllPlugins(){
 	namespace fs = std::filesystem;
 	try{
 		for (const auto& entry: fs::directory_iterator(m_directory)){
+			puts("");
 			if(!entry.is_regular_file())
 				continue;
 
@@ -90,11 +90,12 @@ void PluginManager::loadAllPlugins(){
 				funcScan scan =  lib.getSymbol<funcScan>((const char *)"scan");
 
 				if (!scan){
-					fprintf(stderr , "\tNo function named scan found");
+					fprintf(stderr , "\tNo function named scan found\n");
 					continue;
 
 				}
-				scan(m_pe);
+				//later std::async 
+				scan(m_pe , m_outfile);
 				m_libraries.push_back(std::move(lib));
 			}
 		}
