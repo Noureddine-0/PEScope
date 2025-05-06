@@ -67,6 +67,25 @@ The project has been successfully built and tested on:
 - Linux:
 	- GCC [11.4.0]
 	- Clang [14.0.0]
+## 🔌 Adding a New Plugin
+To streamline plugin development, use the provided Python script to auto-generate all necessary files and CMake configurations for a new plugin.
+### :page_facing_up: Prerequisites
+Ensure Python 3 is installed and accessible from your command line. This script should be run from the root of the project.
+### :hammer_and_wrench: Usage
+```bash
+python create_plugins.py --name PLUGIN_NAME --description "PLUGIN_DESCRIPTION"
+```
+This will:
+
+- Automatically detect the next available plugin index (e.g. `plugin3`)
+- Create:
+	- `cmake/plugins/plugin3.cmake`
+	- `conf/plugins/plugin3.h.in`
+	- `src/plugins_src/plugin3/plugin3.cpp`
+	- `src/plugins_src/plugin3/CMakeLists.txt`
+- Populate each file with boilerplate code and CMake logic
+- Set the plugin’s metadata (name, version, description)
+
 ## :handshake: Contributing
 Contributions are welcome! Please:
 
