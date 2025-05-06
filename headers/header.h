@@ -38,13 +38,12 @@
 #include <cstring>
 #include <ctime>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <mutex>
-#ifndef _PLUGIN
-	#include <openssl/evp.h>
-	#include <openssl/sha.h>
-#endif
+#include <openssl/evp.h>
+#include <openssl/sha.h>
 #include <system_error>
 #include <thread>
 #include <unordered_map>
@@ -60,6 +59,35 @@
         } \
     } while (0)
 
+
+#define CHECK_OFFSET_PLUGIN_NO_EXIT(RESULTS , X , Y , OUTFILE , MUTEX)\
+    do{ \
+    	if ((X) > (Y)){ \
+    		RESULTS += "\tInvalid Offset encountered while parsing\n";\
+    		writeResults(OUTFILE , MUTEX);\
+    		return ;\
+    	} \
+    } while(0)
+
+
+#ifdef _WIN32
+    #define NEWLINE "\r\n"
+#else
+    #define NEWLINE "\n"
+#endif
+
+#define PLUGIN_ENTRY(RESULTS , _NEWLINE , NAME , VERSION) \
+    do{\
+		RESULTS += "=====================================================";\
+		RESULTS += _NEWLINE;\
+		RESULTS +="\t\t";\
+		RESULTS += NAME;\
+		RESULTS += " v";\
+		RESULTS += VERSION;\
+		RESULTS += _NEWLINE;\
+		RESULTS += "=====================================================";\
+		RESULTS += _NEWLINE;\
+    }while(0)
 
 constexpr int MD5_HASH_LEN =  16;
 constexpr int SHA1_HASH_LEN  = 20;

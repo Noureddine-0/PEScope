@@ -95,7 +95,7 @@ void PluginManager::loadAllPlugins(){
 
 				}
 				//later std::async 
-				scan(m_pe , m_outfile);
+				scan(m_pe , m_outfile , s_mutex);
 				m_libraries.push_back(std::move(lib));
 			}
 		}

@@ -251,6 +251,38 @@ struct IMAGE_EXPORT_DIRECTORY {
 };
 
 
+typedef struct IMAGE_COR20_HEADER
+{
+    // Header versioning
+    DWORD                   cb;
+    WORD                    MajorRuntimeVersion;
+    WORD                    MinorRuntimeVersion;
+
+    // Symbol table and startup information
+    IMAGE_DATA_DIRECTORY    MetaData;
+    DWORD                   Flags;
+
+    // If COMIMAGE_FLAGS_NATIVE_ENTRYPOINT is not set, EntryPointToken represents a managed entrypoint.
+    // If COMIMAGE_FLAGS_NATIVE_ENTRYPOINT is set, EntryPointRVA represents an RVA to a native entrypoint.
+    union {
+        DWORD               EntryPointToken;
+        DWORD               EntryPointRVA;
+    } DUMMYUNIONNAME;
+
+    // Binding information
+    IMAGE_DATA_DIRECTORY    Resources;
+    IMAGE_DATA_DIRECTORY    StrongNameSignature;
+
+    // Regular fixup and binding information
+    IMAGE_DATA_DIRECTORY    CodeManagerTable;
+    IMAGE_DATA_DIRECTORY    VTableFixups;
+    IMAGE_DATA_DIRECTORY    ExportAddressTableJumps;
+
+    // Precompiled image info (internal use only - set to zero)
+    IMAGE_DATA_DIRECTORY    ManagedNativeHeader;
+
+} IMAGE_COR20_HEADER, *PIMAGE_COR20_HEADER;
+
 #pragma pack(pop)
 
 // Characteristics

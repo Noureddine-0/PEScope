@@ -1,5 +1,5 @@
 #pragma once
-#define _PLUGIN
+
 #include <pe_parser.h>
 
 #ifdef _WIN32
@@ -16,8 +16,8 @@ extern "C"{
 	};
 
 	PLUGIN_EXPORT PluginInfo getPluginInfo();
-	PLUGIN_EXPORT void scan(PEFile& , std::string&);
+	PLUGIN_EXPORT void scan(PEFile& , std::string& , std::mutex&);
 }
 
 typedef PluginInfo(*funcInfo)();
-typedef void(*funcScan)(PEFile& , std::string&);
+typedef void(*funcScan)(PEFile& , std::string& , std::mutex&);

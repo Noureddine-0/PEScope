@@ -1,6 +1,6 @@
 #include <plugins.h>
 #include <plugin1.h>
-
+#include <utils.h>
 
 PluginInfo thisPlugin{};
 
@@ -45,9 +45,10 @@ bool hasOverlay(const InfoSection* infoSections , WORD count , size_t size){
 }
 
 
-void scan(PEFile& pe , std::string& outfile){
+void scan(PEFile& pe , std::string& outfile , std::mutex& mutex){
 
 	UNREFERENCED_PARAMETER(outfile);
+	UNREFERENCED_PARAMETER(mutex);
 	std::cout << "Start scanning" << '\n';
 	if (hasOverlay(pe.m_peInfo.m_ptr ,pe.m_peInfo.m_sectionNumber, pe.m_size )){
 		std::cout << "Has overlay" << '\n';

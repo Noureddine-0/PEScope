@@ -36,12 +36,13 @@ struct PluginManager{
 	PluginManager(std::string& outfile , const char* m_directory, PEFile& pe);
 	void loadAllPlugins();
 
+	//The mutex will be used later to sunchronize write to the analysis.txt file
+	static std::mutex s_mutex;
 private:
 
 	std::vector<SharedLibrary> m_libraries{};
 	std::string m_outfile;
 	const char *m_directory;
-	//The mutex will be used later to sunchronize write to the analysis.txt file
-	static std::mutex s_mutex;
+	
 	PEFile& m_pe;
 };

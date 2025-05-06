@@ -45,6 +45,8 @@ struct PEInfo{
 
     std::vector<Import*> m_allImports{};
     std::vector<char *> m_allExports{};
+
+    ULONGLONG m_NetAssembly{};
     WORD m_sectionNumber{10};
 
     char m_timeStampString[80];
@@ -61,7 +63,6 @@ struct PEInfo{
 
     bool  m_is32Magic{false};
     bool  m_exceededStackSections{false};
-    bool  m_isNetAssembly{false};
 };
 
 struct PEFile {

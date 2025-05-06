@@ -686,7 +686,7 @@ void PEFile::checkNetAssembly(){
         IMAGE_OPTIONAL_HEADER32& optionalHeader =  ntHeaders->OptionalHeader;
         IMAGE_DATA_DIRECTORY& clrDirectory = optionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR];
 
-        m_peInfo.m_isNetAssembly = (clrDirectory.VirtualAddress != 0 && clrDirectory.Size != 0) ? true: false ;
+        m_peInfo.m_NetAssembly = (static_cast<ULONGLONG>(clrDirectory.VirtualAddress) * 0x100000000ULL ) | clrDirectory.Size ;
     }else{
         auto ntHeaders =  reinterpret_cast<IMAGE_NT_HEADERS64*>(reinterpret_cast<ULONGLONG>(m_lpAddress)
             + m_elfanew);
@@ -696,7 +696,7 @@ void PEFile::checkNetAssembly(){
         IMAGE_OPTIONAL_HEADER64& optionalHeader =  ntHeaders->OptionalHeader;
         IMAGE_DATA_DIRECTORY& clrDirectory = optionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR];
 
-        m_peInfo.m_isNetAssembly = (clrDirectory.VirtualAddress != 0 && clrDirectory.Size != 0) ? true : false;
+        m_peInfo.m_NetAssembly  = (static_cast<ULONGLONG>(clrDirectory.VirtualAddress) * 0x100000000ULL) | clrDirectory.Size ;
     }
 
     return;
@@ -821,7 +821,7 @@ void PEFile::parse(){
     getSections();
     getCharacteristics();
     checkNetAssembly();
-    
+
     ThreadPool::getProcessorsCount();
     
     if (m_size > CONCURRENCY_THRESHOLD && ThreadPool::s_numberOfProcessors >=2) 
@@ -873,7 +873,7 @@ void PEFile::printResult(){
     char sectionName[IMAGE_SIZEOF_SHORT_NAME + 1] = {};
     printf("Type : %s(%s)\n",m_peInfo.m_characteristics.data(),m_peInfo.m_subsystem.data());
     
-    if (m_peInfo.m_isNetAssembly)
+    if ((m_peInfo.m_NetAssembly & 0xFFFFFFFF) && (m_peInfo.m_NetAssembly >> 32))
         puts(".Net Assembly : YES");
     else
         puts(".Net Assembly : NO");
