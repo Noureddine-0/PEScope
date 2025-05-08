@@ -43,7 +43,7 @@ void writeResults(std::string& outfile , std::mutex& mutex){
 		std::cerr << "[ERROR] Failed to open file: " << outfile << std::endl;
 		return;
 	}
-	
+
 	file << s_results;
 	file.close();
 }
@@ -54,11 +54,57 @@ ULONGLONG hasOverlay(const InfoSection* infoSections , WORD count , size_t size)
 	for (int i =0 ; i < count ; i++ , infoSections++){
 		size_t sectionEnd = static_cast<size_t>(infoSections->m_sectionHeader.PointerToRawData + infoSections->m_sectionHeader.SizeOfRawData);
 		if (sectionEnd > lastSectionEnd)
-			lastSectionEnd =  sectionEnd;		
+				lastSectionEnd =  sectionEnd;		
 	}
 	return (size > lastSectionEnd) | (static_cast<ULONGLONG>(lastSectionEnd) * 0x100000000ULL);
 }
 
+
+void detectPacker(PEFile& pe , std::string& outfile , std::mutex& mutex){
+	UNREFERENCED_PARAMETER(outfile);
+	UNREFERENCED_PARAMETER(mutex);
+
+	DWORD nsection{};
+	std::vector<std::pair<std::string , double>> malEntropySections{};
+	PEInfo& peInfo =  pe.m_peInfo;
+	bool isImportSegmentDestroyed = true;
+	s_results += "\tPacker IOC :";
+	s_results += NEWLINE;
+	for (; nsection < peInfo.m_sectionNumber ; nsection++){
+		InfoSection& infoSection = peInfo.m_ptr[nsection];
+		if (infoSection.m_entropy > 7.49999)
+			malEntropySections.push_back(std::make_pair(
+				std::string(reinterpret_cast<char*>(infoSection.m_sectionHeader.Name)), infoSection.m_entropy));
+		if (!strncpy(reinterpret_cast<char *>(infoSection.m_sectionHeader.Name) , ".idata" , 8)){
+			isImportSegmentDestroyed =  false;
+		}
+	}
+
+	if (isImportSegmentDestroyed){
+		s_results += "\t\t- Import segment destroyed";
+		s_results += NEWLINE;
+	}
+
+	if(!malEntropySections.empty()){
+		s_results += "\t\t- High entropy :";
+		s_results += NEWLINE;
+		for (const auto& iter : malEntropySections){
+			s_results += "\t\t\t- ";
+			s_results += iter.first;
+			s_results += ": ";
+			s_results += std::to_string(iter.second);
+			s_results += NEWLINE;
+		}
+	}
+}
+
+
+
+void detectUpx(PEFile& pe , std::string& outfile , std::mutex& mutex){
+	UNREFERENCED_PARAMETER(pe);
+	UNREFERENCED_PARAMETER(outfile);
+	UNREFERENCED_PARAMETER(mutex);
+}
 
 void scan(PEFile& pe , std::string& outfile , std::mutex& mutex){
 
@@ -72,6 +118,8 @@ void scan(PEFile& pe , std::string& outfile , std::mutex& mutex){
 		writeResults(outfile , mutex);
 		return;
 	}
+
+	double entropy{};
 
 	ULONGLONG overlay =  hasOverlay(peInfo.m_ptr , peInfo.m_sectionNumber , pe.m_size);
 	if(overlay & 0xFFFFFFFF){
@@ -99,7 +147,13 @@ void scan(PEFile& pe , std::string& outfile , std::mutex& mutex){
     	utils::bytesToHexString(md5.data() , MD5_HASH_LEN , strMd5.data());
     	utils::bytesToHexString(sha1.data() , SHA1_HASH_LEN , strSha1.data());
     	utils::bytesToHexString(sha256.data() , SHA256_HASH_LEN , strSha256.data());
+    	utils::calculateEntropy(reinterpret_cast<LPCVOID>(
+    		reinterpret_cast<ULONGLONG>(pe.m_lpAddress) + (overlay >> 32)) ,
+    		pe.m_size - (overlay >> 32) , &entropy);
 
+    	s_results += "\t\tentropy : ";
+    	s_results += std::to_string(entropy);
+    	s_results += NEWLINE	;
     	s_results += "\t\tMd5 : " ;
     	s_results += (char *)strMd5.data();
     	s_results += NEWLINE;
@@ -109,9 +163,11 @@ void scan(PEFile& pe , std::string& outfile , std::mutex& mutex){
     	s_results += "\t\tSha256 : ";
     	s_results += (char *)strSha256.data();
     	s_results += NEWLINE;
+    	detectPacker(pe , outfile , mutex);
     	writeResults(outfile , mutex);
     	return;
 	}
+
 
 	s_results += "\tOverlay : No";
 	s_results += NEWLINE;
