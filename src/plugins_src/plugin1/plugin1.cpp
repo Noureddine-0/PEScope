@@ -111,7 +111,7 @@ void  compareVirtualAndRawSize(PEFile& pe){
 	
 }
 
-void scan(PEF& pe , std::string& outfile , std::mutex& mutex){
+void scan(PEFile& pe , std::string& outfile , std::mutex& mutex){
 
 	PLUGIN_ENTRY(s_results , NEWLINE , PLUGIN_NAME , PLUGIN_VERSION);
 
