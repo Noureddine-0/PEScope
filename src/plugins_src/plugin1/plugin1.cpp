@@ -75,7 +75,7 @@ void detectPacker(PEFile& pe , std::string& outfile , std::mutex& mutex){
 		if (infoSection.m_entropy > 7.49999)
 			malEntropySections.push_back(std::make_pair(
 				std::string(reinterpret_cast<char*>(infoSection.m_sectionHeader.Name)), infoSection.m_entropy));
-		if (!strncpy(reinterpret_cast<char *>(infoSection.m_sectionHeader.Name) , ".idata" , 8)){
+		if (!strncmp(reinterpret_cast<char *>(infoSection.m_sectionHeader.Name) , ".idata" , 8)){
 			isImportSegmentDestroyed =  false;
 		}
 	}
@@ -106,7 +106,12 @@ void detectUpx(PEFile& pe , std::string& outfile , std::mutex& mutex){
 	UNREFERENCED_PARAMETER(mutex);
 }
 
-void scan(PEFile& pe , std::string& outfile , std::mutex& mutex){
+void  compareVirtualAndRawSize(PEFile& pe){
+	PEInfo& peInfo=  pe.m_peInfo;
+	
+}
+
+void scan(PEF& pe , std::string& outfile , std::mutex& mutex){
 
 	PLUGIN_ENTRY(s_results , NEWLINE , PLUGIN_NAME , PLUGIN_VERSION);
 
